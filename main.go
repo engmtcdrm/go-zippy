@@ -8,22 +8,22 @@ func main() {
 		panic(err)
 	}
 
-	err = zippy.Zip("test2", "test3/test.zip")
+	err = zippy.Zip("test2", "test3/test2-bak.zip")
 	if err != nil {
 		panic(err)
 	}
 
-	err = zippy.Zip("test/test1", "test3/testfile.zip")
+	err = zippy.Zip("test/test1", "test3/testfile1.zip")
 	if err != nil {
 		panic(err)
 	}
 
-	err = zippy.Zip("test/test1", "test3/testfile2.zip")
+	err = zippy.Zip("test/test2", "test3/testfile2.zip")
 	if err != nil {
 		panic(err)
 	}
 
-	err = zippy.Zip("test", "test3/testdir.zip")
+	err = zippy.Zip("test", "test3/test-dir.zip")
 	if err != nil {
 		panic(err)
 	}
