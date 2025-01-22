@@ -3,6 +3,7 @@ package zippy
 import (
 	"archive/zip"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,9 +36,17 @@ func unzipFile(file *zip.File, filePath string) error {
 		}
 	}()
 
-	written, err := io.Copy(outFile, zippedFile)
+	hash := crc32.NewIEEE()
+
+	written, err := io.Copy(outFile, io.TeeReader(zippedFile, hash))
 	if err != nil {
 		return err
+	}
+
+	checksum := hash.Sum32()
+
+	if checksum != file.CRC32 {
+		return fmt.Errorf("failed to copy '%s': expected '%08x' checksum, got '%08x' checksum", filePath, file.CRC32, checksum)
 	}
 
 	return validateCopy(filePath, written, int64(file.UncompressedSize64))
