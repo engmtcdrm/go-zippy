@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"example.com/m/zippy/testutils"
 )
 
 func TestUnzipFile(t *testing.T) {
@@ -64,23 +66,9 @@ func TestUnzip(t *testing.T) {
 		{"Zip Exists", filepath.Join(tempDir, "test.zip"), filepath.Join(tempDir, "output"), false},
 	}
 
-	// Create a test zip file
-	zipFile, err := os.Create(filepath.Join(tempDir, "test.zip"))
-	if err != nil {
+	if err = testutils.CreateZipFile(filepath.Join(tempDir, "test.zip"), 10, 2); err != nil {
 		t.Fatalf("Failed to create test zip file: %v", err)
 	}
-
-	zipWriter := zip.NewWriter(zipFile)
-	fileWriter, err := zipWriter.Create("testfile.txt")
-	if err != nil {
-		t.Fatalf("Failed to add file to test zip: %v", err)
-	}
-	_, err = fileWriter.Write([]byte("Hello, World!"))
-	if err != nil {
-		t.Fatalf("Failed to write to test file: %v", err)
-	}
-	zipWriter.Close()
-	zipFile.Close()
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
