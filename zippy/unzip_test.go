@@ -54,25 +54,50 @@ func TestUnzip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
+			t.Fatalf("Failed to remove temp dir: %v", removeErr)
+		}
+	}()
 
 	tests := []struct {
-		testName string
-		zipFile  string
-		dest     string
-		wantErr  bool
+		testName   string
+		exists     bool
+		isFile     bool
+		filePath   string
+		dest       string
+		files      int
+		subfolders int
+		wantErr    bool
 	}{
-		{"Zip Does Not Exist", "nonexistent.zip", filepath.Join(tempDir, "output"), true},
-		{"Zip Exists", filepath.Join(tempDir, "test.zip"), filepath.Join(tempDir, "output"), false},
-	}
-
-	if err = testutils.CreateZipFile(filepath.Join(tempDir, "test.zip"), 10, 2); err != nil {
-		t.Fatalf("Failed to create test zip file: %v", err)
+		{"Zip Exists", true, false, filepath.Join(tempDir, "test.zip"), filepath.Join(tempDir, "output"), 10, 0, false},
+		{"Empty Zip Exists", true, false, filepath.Join(tempDir, "test2.zip"), filepath.Join(tempDir, "output"), 0, 0, false},
+		{"Zip Exists w Subfolders", true, false, filepath.Join(tempDir, "test3.zip"), filepath.Join(tempDir, "output"), 10, 2, false},
+		{"Zip Exists wo Files w Subfolders", true, false, filepath.Join(tempDir, "test4.zip"), filepath.Join(tempDir, "output"), 0, 2, false},
+		{"Zip Does Not Exist", false, false, "nonexistent.zip", filepath.Join(tempDir, "output"), 1, 0, true},
+		{"Not a Zip File", false, true, filepath.Join(tempDir, "not_a_zip.txt"), filepath.Join(tempDir, "output"), 1, 0, true},
+		{"Bad Zip File Path, Invalid Character", false, false, "/invalid/path\0001", filepath.Join(tempDir, "output"), 1, 0, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			err := Unzip(tt.zipFile, tt.dest)
+			if tt.exists {
+				if err = testutils.CreateZipFile(tt.filePath, tt.files, tt.subfolders); err != nil {
+					t.Fatalf("Failed to create test zip file: %v", err)
+				}
+			} else if tt.isFile {
+				file, err := os.Create(tt.filePath)
+				if err != nil {
+					t.Fatalf("Failed to create test file: %v", err)
+				}
+				defer func() {
+					if closeErr := file.Close(); closeErr != nil {
+						t.Fatalf("Failed to close test file: %v", closeErr)
+					}
+				}()
+			}
+
+			err := Unzip(tt.filePath, tt.dest)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Unzip() error = %v, wantErr %v", err, tt.wantErr)
 			}
