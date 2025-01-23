@@ -55,7 +55,9 @@ func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
 		return err
 	}
 
-	return validateCopy(path, written, info.Size())
+	err = validateCopy(path, written, info.Size())
+
+	return err
 }
 
 // Zip compresses a file or directory to a zip archive.
