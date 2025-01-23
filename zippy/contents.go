@@ -15,5 +15,5 @@ func Contents(zipFile string) ([]*zip.File, error) {
 		}
 	}()
 
-	return zipRead.File, nil
+	return zipRead.File, err
 }
