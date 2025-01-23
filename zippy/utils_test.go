@@ -12,9 +12,9 @@ func TestValidateCopy(t *testing.T) {
 		expected int64
 		wantErr  bool
 	}{
+		{"Valid Copy", "/valid/path", 100, 100, false},
 		{"Invalid Path", "/invalid/path\0001", 100, 100, true},
 		{"Mismatched Bytes", "/valid/path", 100, 200, true},
-		{"Valid Copy", "/valid/path", 100, 100, false},
 	}
 
 	for _, tt := range tests {
