@@ -34,8 +34,8 @@ func TestContents(t *testing.T) {
 		expectedFileCnt int
 		wantErr         bool
 	}{
-		{"Zip Does Not Exist", "nonexistent.zip", 0, true},
 		{"Zip Exists", filepath.Join(tempDir, "test.zip"), 1, false},
+		{"Zip Does Not Exist", "nonexistent.zip", 0, true},
 	}
 
 	for _, tt := range tests {
