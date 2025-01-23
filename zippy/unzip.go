@@ -10,7 +10,10 @@ import (
 )
 
 // unzipFile extracts a single file from a zip archive.
-// The file is extracted to the specified path.
+// The file is extracted to the specified path. The file
+// is validated using the CRC32 checksum and the size
+// of the extracted file is validated against the expected
+// size.
 //
 // file is the file to extract.
 //
@@ -49,7 +52,9 @@ func unzipFile(file *zip.File, filePath string) error {
 		return fmt.Errorf("failed to copy '%s': expected '%08x' checksum, got '%08x' checksum", filePath, file.CRC32, checksum)
 	}
 
-	return validateCopy(filePath, written, int64(file.UncompressedSize64))
+	err = validateCopy(filePath, written, int64(file.UncompressedSize64))
+
+	return err
 }
 
 // Unzip extracts the contents of a zip archive to a destination directory.
@@ -95,5 +100,5 @@ func Unzip(zipFilePath string, dest string) error {
 		}
 	}
 
-	return nil
+	return err
 }
