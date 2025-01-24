@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 // CreateTempFile creates a temporary file in the specified directory with the specified name.
@@ -126,6 +128,47 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) error {
 			}
 		}
 	}
+
+	return err
+}
+
+// PermissionTest is a helper function to wrap another function that requires a file to have specific permissions.
+//
+// filePermPath is the path to the file to change permissions on.
+//
+// funcToRun is the function to run that requires the file to have specific permissions.
+//
+// arg1 is the first argument to pass to the function.
+//
+// arg2 is the second argument to pass to the function.
+func PermissionTest(filePermPath string, funcToRun func(string, string) error, arg1 string, arg2 string) error {
+	var err error
+
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+		defer func() {
+			// Restore permissions after the test
+			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
+			if runError := cmd.Run(); runError != nil {
+				err = runError
+			}
+		}()
+	} else {
+		if err := os.Chmod(filePermPath, 0000); err != nil {
+			return err
+		}
+		defer func() {
+			// Restore permissions after the test
+			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
+				err = restoreErr
+			}
+		}()
+	}
+
+	err = funcToRun(arg1, arg2)
 
 	return err
 }
