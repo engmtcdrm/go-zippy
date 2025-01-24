@@ -2,11 +2,8 @@ package zippy
 
 import (
 	"archive/zip"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"example.com/m/zippy/testutils"
@@ -67,17 +64,6 @@ func TestZip(t *testing.T) {
 		}
 	}()
 
-	// Test zip of 0 files
-	// Test zip of 1 file
-	// Test zip of 10 files
-	// Test zip of 0 files and 1 subdirectory
-	// Test zip of 1 file and 1 subdirectory
-	// Test zip of 10 files and 2 subdirectories
-	// Test nonexistent zip input path
-	// Test invalid (bad char \000) zip input path
-	// Test bad permissions zip input path
-	// Test bad permissions zip output path
-
 	tests := []struct {
 		testName   string
 		exists     bool
@@ -107,65 +93,18 @@ func TestZip(t *testing.T) {
 				}
 			}
 
-			if runtime.GOOS == "windows" {
-				if tt.testName == "Bad Permissions Zip Input Path" {
-					cmd := exec.Command("icacls", tt.filePath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-					if err := cmd.Run(); err != nil {
-						t.Fatalf("Failed to set permissions: %v", err)
-					}
-					defer func() {
-						// Restore permissions after the test
-						cmd := exec.Command("icacls", tt.filePath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-						cmd.Run()
-					}()
-				}
+			var err error
 
-				if tt.testName == "Bad Permissions Zip Output Path" {
-					destDir := filepath.Dir(tt.dest)
+			if tt.testName == "Bad Permissions Zip Input Path" {
+				err = testutils.PermissionTest(tt.filePath, Zip, tt.filePath, tt.dest)
+			} else if tt.testName == "Bad Permissions Zip Output Path" {
+				destDir := filepath.Dir(tt.dest)
 
-					cmd := exec.Command("icacls", destDir, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-					if err := cmd.Run(); err != nil {
-						t.Fatalf("Failed to set permissions: %v", err)
-					}
-					defer func() {
-						// Restore permissions after the test
-						cmd := exec.Command("icacls", destDir, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-						cmd.Run()
-					}()
-				}
+				err = testutils.PermissionTest(destDir, Zip, tt.filePath, tt.dest)
 			} else {
-				if tt.testName == "Bad Permissions Zip Input Path" {
-					if err := os.Chmod(tt.filePath, 0000); err != nil {
-						t.Fatalf("Failed to set permissions: %v", err)
-					}
-					defer func() {
-						// Restore permissions after the test
-						if err := os.Chmod(tt.filePath, 0755); err != nil {
-							t.Fatalf("Failed to restore permissions: %v", err)
-						}
-					}()
-				}
-
-				if tt.testName == "Bad Permissions Zip Output Path" {
-					destDir := filepath.Dir(tt.dest)
-
-					if err := os.Mkdir(destDir, 0755); err != nil {
-						t.Fatalf("Failed to create test directory: %v", err)
-					}
-
-					if err := os.Chmod(destDir, 0000); err != nil {
-						t.Fatalf("Failed to set permissions: %v", err)
-					}
-					defer func() {
-						// Restore permissions after the test
-						if err := os.Chmod(destDir, 0755); err != nil {
-							t.Fatalf("Failed to restore permissions: %v", err)
-						}
-					}()
-				}
+				err = Zip(tt.filePath, tt.dest)
 			}
 
-			err := Zip(tt.filePath, tt.dest)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Zip() error = %v, wantErr %v", err, tt.wantErr)
 			}
