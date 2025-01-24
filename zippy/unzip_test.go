@@ -77,6 +77,8 @@ func TestUnzip(t *testing.T) {
 		{"Zip Does Not Exist", false, false, "nonexistent.zip", filepath.Join(tempDir, "output"), 1, 0, true},
 		{"Not a Zip File", false, true, filepath.Join(tempDir, "not_a_zip.txt"), filepath.Join(tempDir, "output"), 1, 0, true},
 		{"Bad Zip File Path, Invalid Character", false, false, "/invalid/path\0001", filepath.Join(tempDir, "output"), 1, 0, true},
+		{"Bad Permissions Unzip Input Path", true, false, filepath.Join(tempDir, "bad-in-perm.zip"), filepath.Join(tempDir, "bad-in-perm"), 0, 0, true},
+		{"Bad Permissions Unzip Output Path", true, false, filepath.Join(tempDir, "bad-out-perm.zip"), filepath.Join(tempDir, "bad-out-perm"), 1, 0, true},
 	}
 
 	for _, tt := range tests {
@@ -97,7 +99,18 @@ func TestUnzip(t *testing.T) {
 				}()
 			}
 
-			err := Unzip(tt.filePath, tt.dest)
+			var err error
+
+			if tt.testName == "Bad Permissions Unzip Input Path" {
+				err = testutils.PermissionTest(tt.filePath, Unzip, tt.filePath, tt.dest)
+			} else if tt.testName == "Bad Permissions Unzip Output Path" {
+				destDir := filepath.Dir(tt.dest)
+
+				err = testutils.PermissionTest(destDir, Unzip, tt.filePath, tt.dest)
+			} else {
+				err = Unzip(tt.filePath, tt.dest)
+			}
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Unzip() error = %v, wantErr %v", err, tt.wantErr)
 			}
