@@ -43,7 +43,7 @@ func CreateTempFile(dir, name string) error {
 // subdirs is the number of subdirectories to create. The subdirectories will contain the same number
 // of files as the parent directory.
 func CreateTestFiles(dir string, files int, subdirs int) error {
-	if err := os.Mkdir(dir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func CreateTestFiles(dir string, files int, subdirs int) error {
 	for i := 0; i < subdirs; i++ {
 		subfolder := filepath.Join(dir, fmt.Sprintf("subfolder%d", i))
 
-		if err := os.Mkdir(subfolder, os.ModePerm); err != nil {
+		if err := os.MkdirAll(subfolder, os.ModePerm); err != nil {
 			return err
 		}
 
