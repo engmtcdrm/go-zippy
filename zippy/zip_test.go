@@ -88,7 +88,7 @@ func TestZip(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.exists {
-				if err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
+				if _, err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
 					t.Fatalf("Failed to create test files: %v", err)
 				}
 			}

@@ -22,7 +22,7 @@ func main() {
 
 	os.RemoveAll(".test")
 
-	if err := testutils.CreateTestFiles(tempDir, 3, 2); err != nil {
+	if _, err := testutils.CreateTestFiles(tempDir, 3, 2); err != nil {
 		panic(err)
 	}
 

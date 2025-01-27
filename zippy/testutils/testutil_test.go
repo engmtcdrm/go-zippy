@@ -14,7 +14,7 @@ func TestCreateTempFile(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	err = CreateTempFile(tempDir, "testfile-*.txt")
+	_, err = CreateTempFile(tempDir, "testfile-*.txt")
 	if err != nil {
 		t.Fatalf("CreateTempFile() error = %v", err)
 	}
@@ -37,8 +37,7 @@ func TestCreateTestFiles(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	err = CreateTestFiles(tempDir, 3, 2)
-	if err != nil {
+	if _, err = CreateTestFiles(tempDir, 3, 2); err != nil {
 		t.Fatalf("CreateTestFiles() error = %v", err)
 	}
 
@@ -131,7 +130,7 @@ func TestPermissionTest(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	testFilePath := filepath.Join(tempDir, "testfile.txt")
-	err = CreateTempFile(tempDir, "testfile-*.txt")
+	_, err = CreateTempFile(tempDir, "testfile-*.txt")
 	if err != nil {
 		t.Fatalf("CreateTempFile() error = %v", err)
 	}
@@ -147,15 +146,4 @@ func TestPermissionTest(t *testing.T) {
 	if err == nil {
 		t.Errorf("PermissionTest() did not produce an error as expected = %v", err)
 	}
-
-	// Test with restricted permissions
-	// err = os.Chmod(testFilePath, 0444) // Read-only
-	// if err != nil {
-	// 	t.Fatalf("Failed to change file permissions: %v", err)
-	// }
-
-	// err = PermissionTest(testFilePath, callback)
-	// if err == nil {
-	// 	t.Errorf("Expected error with restricted permissions, got nil")
-	// }
 }

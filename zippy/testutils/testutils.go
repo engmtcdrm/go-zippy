@@ -15,10 +15,10 @@ import (
 // dir is the directory where the file will be created.
 //
 // name is the name of the file.
-func CreateTempFile(dir, name string) error {
+func CreateTempFile(dir, name string) (*os.File, error) {
 	tempFile, err := os.CreateTemp(dir, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		if closeErr := tempFile.Close(); closeErr != nil {
@@ -28,10 +28,10 @@ func CreateTempFile(dir, name string) error {
 
 	_, err = tempFile.Write([]byte(filepath.Base(tempFile.Name())))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return err
+	return tempFile, err
 }
 
 // CreateTestFiles creates a specified number of files and subdirectories in the specified directory.
@@ -42,32 +42,40 @@ func CreateTempFile(dir, name string) error {
 //
 // subdirs is the number of subdirectories to create. The subdirectories will contain the same number
 // of files as the parent directory.
-func CreateTestFiles(dir string, files int, subdirs int) error {
+func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, error) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return err
+		return nil, err
 	}
 
+	var tempFiles []*os.File
+
 	for i := 0; i < files; i++ {
-		if err := CreateTempFile(dir, fmt.Sprintf("test%d-*.txt", i)); err != nil {
-			return err
+		tempFile, err := CreateTempFile(dir, fmt.Sprintf("test%d-*.txt", i))
+		if err != nil {
+			return nil, err
 		}
+
+		tempFiles = append(tempFiles, tempFile)
 	}
 
 	for i := 0; i < subdirs; i++ {
 		subfolder := filepath.Join(dir, fmt.Sprintf("subfolder%d", i))
 
 		if err := os.MkdirAll(subfolder, os.ModePerm); err != nil {
-			return err
+			return nil, err
 		}
 
 		for j := 0; j < files; j++ {
-			if err := CreateTempFile(subfolder, fmt.Sprintf("test%d-*.txt", j)); err != nil {
-				return err
+			tempFile, err := CreateTempFile(subfolder, fmt.Sprintf("test%d-*.txt", j))
+			if err != nil {
+				return nil, err
 			}
+
+			tempFiles = append(tempFiles, tempFile)
 		}
 	}
 
-	return nil
+	return tempFiles, nil
 }
 
 // CreateZipFile creates a zip file with the specified number of files and subdirectories.
