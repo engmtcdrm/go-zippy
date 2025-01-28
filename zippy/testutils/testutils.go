@@ -180,3 +180,45 @@ func PermissionTest(filePermPath string, funcToRun func(string, string) error, a
 
 	return err
 }
+
+// PermissionTestVariadic is a helper function to wrap another function that requires a file to have specific permissions.
+// This version supports a variadic argument for funcToRun.
+//
+// filePermPath is the path to the file to change permissions on.
+//
+// funcToRun is the function to run that requires the file to have specific permissions.
+//
+// arg1 is the first argument to pass to the function.
+//
+// args are the variadic arguments to pass to the function.
+func PermissionTestVariadic(filePermPath string, funcToRun func(string, ...string) error, arg1 string, args ...string) error {
+	var err error
+
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+		defer func() {
+			// Restore permissions after the test
+			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
+			if runError := cmd.Run(); runError != nil {
+				err = runError
+			}
+		}()
+	} else {
+		if err := os.Chmod(filePermPath, 0000); err != nil {
+			return err
+		}
+		defer func() {
+			// Restore permissions after the test
+			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
+				err = restoreErr
+			}
+		}()
+	}
+
+	err = funcToRun(arg1, args...)
+
+	return err
+}
