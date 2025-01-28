@@ -96,13 +96,13 @@ func TestZip(t *testing.T) {
 			var err error
 
 			if tt.testName == "Bad Permissions Zip Input Path" {
-				err = testutils.PermissionTest(tt.filePath, Zip, tt.filePath, tt.dest)
+				err = testutils.PermissionTestVariadic(tt.filePath, Zip, tt.dest, tt.filePath)
 			} else if tt.testName == "Bad Permissions Zip Output Path" {
 				destDir := filepath.Dir(tt.dest)
 
-				err = testutils.PermissionTest(destDir, Zip, tt.filePath, tt.dest)
+				err = testutils.PermissionTestVariadic(destDir, Zip, tt.dest, tt.filePath)
 			} else {
-				err = Zip(tt.filePath, tt.dest)
+				err = Zip(tt.dest, tt.filePath)
 			}
 
 			if (err != nil) != tt.wantErr {
