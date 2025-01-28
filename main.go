@@ -17,8 +17,8 @@ func main() {
 	defer os.RemoveAll(tempDir)
 
 	baseDir := ".test"
-	tgtDir := filepath.Join(baseDir, "test2")
-	zipFile := filepath.Join(baseDir, "test", "test.zip")
+	tgtDir := filepath.Join(baseDir, "unzip")
+	zipFile := filepath.Join(baseDir, "zip", "test.zip")
 
 	os.RemoveAll(".test")
 
@@ -36,6 +36,10 @@ func main() {
 	}
 
 	if err := zippy.AddToZip(zipFile, tempFile.Name()); err != nil {
+		panic(err)
+	}
+
+	if err := zippy.RemoveFromZip(zipFile, filepath.Base(tempFile.Name()), "subfolder0/"); err != nil {
 		panic(err)
 	}
 
