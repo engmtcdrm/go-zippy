@@ -26,7 +26,16 @@ func main() {
 		panic(err)
 	}
 
-	if err := zippy.Zip(tempDir, zipFile); err != nil {
+	if err := zippy.Zip(zipFile, tempDir); err != nil {
+		panic(err)
+	}
+
+	tempFile, err := testutils.CreateTempFile(tempDir, "bubba-*.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := zippy.AddToZip(zipFile, tempFile.Name()); err != nil {
 		panic(err)
 	}
 
