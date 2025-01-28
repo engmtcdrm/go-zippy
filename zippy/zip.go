@@ -90,7 +90,7 @@ func zipFiles(zipWriter *zip.Writer, file string) error {
 	return err
 }
 
-// Zip compresses multiple files or directories to a zip archive.
+// Zip adds multiple files or directories to a zip archive.
 // The destination file will be created if it does not exist.
 //
 // dest is the destination zip archive path.
