@@ -102,3 +102,8 @@ func Unzip(zipFilePath string, dest string) error {
 
 	return err
 }
+
+// TODO: UnzipTo func
+func UnzipTo(zipFilePath string, dest string) error {
+	return nil
+}
