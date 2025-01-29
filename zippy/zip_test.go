@@ -47,7 +47,7 @@ func TestZipFile(t *testing.T) {
 	}()
 
 	// Test zipFile function
-	err = zipFile(testFilePath, zipWriter, tempDir)
+	err = zipFile(zipWriter, testFilePath)
 	if err != nil {
 		t.Errorf("zipFile() error = %v", err)
 	}
