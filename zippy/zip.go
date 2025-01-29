@@ -11,15 +11,10 @@ import (
 
 // zipFile adds a file or directory to a zip archive.
 //
-// path is the file or directory to add.
-//
 // zipWriter is the zip.Writer to write to.
-func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
-	relPath, err := filepath.Rel(baseDir, path)
-	if err != nil {
-		return err
-	}
-
+//
+// path is the file or directory to add.
+func zipFile(zipWriter *zip.Writer, path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -30,8 +25,7 @@ func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
 		return err
 	}
 
-	// Zip format always uses forward slash
-	header.Name = strings.Replace(relPath, "\\", "/", -1)
+	header.Name = normalizePath(path)
 	if info.IsDir() {
 		header.Name += "/"
 	} else {
@@ -83,10 +77,11 @@ func zipFiles(zipWriter *zip.Writer, file string) error {
 			if walkErr != nil {
 				return walkErr
 			}
-			return zipFile(path, zipWriter, file)
+
+			return zipFile(zipWriter, path)
 		})
 	} else {
-		err = zipFile(file, zipWriter, filepath.Dir(file))
+		err = zipFile(zipWriter, file)
 	}
 
 	return err
@@ -99,7 +94,6 @@ func zipFiles(zipWriter *zip.Writer, file string) error {
 //
 // files are the files or directories to compress.
 func Zip(dest string, files ...string) error {
-	// Make sure the destination directory exists
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
 		return err
 	}
@@ -137,7 +131,6 @@ func Zip(dest string, files ...string) error {
 //
 // files are the files or directories to compress.
 func AddToZip(dest string, files ...string) error {
-	// Make sure the destination directory exists
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
 		return err
 	}
@@ -172,7 +165,8 @@ func AddToZip(dest string, files ...string) error {
 	// Copy existing files to the new zip archive if zip file exists
 	if err == nil {
 		for _, f := range zipReader.File {
-			w, err := zipWriter.CreateHeader(&f.FileHeader)
+			// TODO: Put into own function for defer reasons
+			fWriter, err := zipWriter.CreateHeader(&f.FileHeader)
 			if err != nil {
 				return err
 			}
@@ -180,7 +174,8 @@ func AddToZip(dest string, files ...string) error {
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(w, rc)
+
+			_, err = io.Copy(fWriter, rc)
 			rc.Close()
 			if err != nil {
 				return err
@@ -197,7 +192,12 @@ func AddToZip(dest string, files ...string) error {
 	return nil
 }
 
-func RemoveFromZip(dest string, files ...string) error {
+// DeleteFromZip deletes multiple files or directories from an existing zip archive.
+//
+// dest is the destination zip archive path.
+//
+// files are the files or directories to delete.
+func DeleteFromZip(dest string, files ...string) error {
 	_, err := os.Stat(dest)
 	if err != nil {
 		return err
@@ -240,18 +240,16 @@ func RemoveFromZip(dest string, files ...string) error {
 		}
 	}()
 
-	// Create a map of files to remove for quick lookup
-	filesToRemove := make(map[string]bool)
+	filesToRemove := make(map[string]string)
 	for _, file := range files {
-		filesToRemove[file] = true
+		filesToRemove[file] = normalizePath(file)
 	}
 
-	// Copy existing files to the new zip archive if zip file exists
 	if err == nil {
 		for _, f := range zipReader.File {
 			shouldRemove := false
 			for fileToRemove := range filesToRemove {
-				if strings.HasPrefix(f.Name, fileToRemove) {
+				if strings.HasPrefix(f.Name, filesToRemove[fileToRemove]+"/") || f.Name == filesToRemove[fileToRemove] {
 					shouldRemove = true
 					break
 				}
@@ -260,19 +258,18 @@ func RemoveFromZip(dest string, files ...string) error {
 				continue
 			}
 
-			// if filesToRemove[f.Name] {
-			// 	continue
-			// }
-
-			w, err := zipWriter.CreateHeader(&f.FileHeader)
+			// TODO: Put into own function for defer reasons
+			fWriter, err := zipWriter.CreateHeader(&f.FileHeader)
 			if err != nil {
 				return err
 			}
+
 			rc, err := f.Open()
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(w, rc)
+
+			_, err = io.Copy(fWriter, rc)
 			rc.Close()
 			if err != nil {
 				return err
@@ -292,7 +289,6 @@ func RemoveFromZip(dest string, files ...string) error {
 		return err
 	}
 
-	// Move the new zip file to the original destination
 	if err := os.Rename(newDestZipFile.Name(), dest); err != nil {
 		return err
 	}
