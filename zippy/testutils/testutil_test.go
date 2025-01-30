@@ -122,7 +122,9 @@ func TestCreateZipFile(t *testing.T) {
 	}
 }
 
-func TestPermissionTest(t *testing.T) {
+// TODO: Add test for PermissionTest1Arg
+
+func TestPermissionTest2Args(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "test-")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -142,7 +144,7 @@ func TestPermissionTest(t *testing.T) {
 	}
 
 	// Test with granted permissions
-	err = PermissionTest(tempDir, callback, tempDir, testFilePath)
+	err = PermissionTest2Args(tempDir, callback, tempDir, testFilePath)
 	if err == nil {
 		t.Errorf("PermissionTest() did not produce an error as expected = %v", err)
 	}
