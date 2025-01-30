@@ -57,17 +57,24 @@ func unzipFile(file *zip.File, filePath string) error {
 	return err
 }
 
-// Unzip extracts the contents of a zip archive to a destination directory.
+// Unzip extracts the contents of a zip archive to the same directory as the archive.
+//
+// path is the path to the zip archive.
+func Unzip(path string) ([]*zip.File, error) {
+	return UnzipTo(path, filepath.Dir(path))
+}
+
+// UnzipTo extracts the contents of a zip archive to a destination directory.
 // The destination directory will be created if it does not exist.
 // The file modification times will be preserved.
 //
-// zipFilePath is the path to the zip archive.
+// path is the path to the zip archive.
 //
 // dest is the destination directory.
-func Unzip(zipFilePath string, dest string) error {
-	zipReader, err := zip.OpenReader(zipFilePath)
+func UnzipTo(path string, dest string) ([]*zip.File, error) {
+	zipReader, err := zip.OpenReader(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		if closeErr := zipReader.Close(); closeErr != nil {
@@ -80,30 +87,25 @@ func Unzip(zipFilePath string, dest string) error {
 
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(filePath, file.Mode()); err != nil {
-				return err
+				return nil, err
 			}
 		} else {
 			// Ensure the directory for the inflated file exists
 			fileDir := filepath.Dir(filePath)
 			if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
-				return err
+				return nil, err
 			}
 
 			if err := unzipFile(file, filePath); err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		// Preserve the file modification date
 		if err := os.Chtimes(filePath, file.Modified, file.Modified); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return err
-}
-
-// TODO: UnzipTo func
-func UnzipTo(zipFilePath string, dest string) error {
-	return nil
+	return zipReader.File, err
 }
