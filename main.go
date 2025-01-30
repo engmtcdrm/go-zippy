@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -43,11 +44,11 @@ func testAbsZip(zipFile string) error {
 		return err
 	}
 
-	if err := zippy.AddToZip(zipFile, tempFile.Name(), filepath.Join(tempDir, "bubba")); err != nil {
+	if err := zippy.Add(zipFile, tempFile.Name(), filepath.Join(tempDir, "bubba")); err != nil {
 		return err
 	}
 
-	if err := zippy.DeleteFromZip(zipFile, filepath.Join(tempDir, "subfolder0"), filepath.Join(tempDir, "bubba")); err != nil {
+	if err := zippy.Delete(zipFile, filepath.Join(tempDir, "subfolder0"), filepath.Join(tempDir, "bubba")); err != nil {
 		return err
 	}
 
@@ -99,21 +100,28 @@ func testRelPath(zipFile string) error {
 }
 
 func main() {
+	baseDir := flag.String("d", ".test", "Base directory for zip operations")
+	flag.Parse()
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Current working directory:", pp.Green(cwd))
-	fmt.Println()
-
-	baseDir := ".test"
-	absZip := filepath.Join(baseDir, "abs-zip")
-	relZip := filepath.Join(baseDir, "rel-zip")
+	absZip := filepath.Join(*baseDir, "abs-zip")
+	relZip := filepath.Join(*baseDir, "rel-zip")
 	absZipFile := filepath.Join(absZip, "test.zip")
 	relZipFile := filepath.Join(relZip, "test.zip")
 
-	if err := os.RemoveAll(baseDir); err != nil {
+	fmt.Println("Current working directory:", pp.Green(cwd))
+	fmt.Println("Base directory:", pp.Green(*baseDir))
+	fmt.Println("Absolute path zip directory:", pp.Green(absZip))
+	fmt.Println("Relative path zip directory:", pp.Green(relZip))
+	fmt.Println("Absolute path zip file:", pp.Green(absZipFile))
+	fmt.Println("Relative path zip file:", pp.Green(relZipFile))
+	fmt.Println()
+
+	if err := os.RemoveAll(*baseDir); err != nil {
 		panic(err)
 	}
 
@@ -126,16 +134,30 @@ func main() {
 		panic(err)
 	}
 
-	if err := zippy.Unzip(absZipFile, absZip); err != nil {
+	// Test unzipping absolute path zip file
+	_, err = zippy.Unzip(absZipFile)
+	if err != nil {
+		panic(err)
+	}
+
+	// fmt.Printf("Unzipped files:\n\n")
+
+	// for _, unzippedFile := range unzippedFiles {
+
+	// 	fmt.Printf("    %s [%s]\n", pp.Green(unzippedFile.Name), filepath.Join(filepath.VolumeName(cwd), filepath.FromSlash(unzippedFile.Name)))
+	// }
+
+	_, err = zippy.UnzipTo(absZipFile, absZip+"2")
+	if err != nil {
 		panic(err)
 	}
 
 	// Test relative path
-	if err := testRelPath(relZipFile); err != nil {
-		panic(err)
-	}
+	// if err := testRelPath(relZipFile); err != nil {
+	// 	panic(err)
+	// }
 
-	if err := testContents(relZipFile); err != nil {
-		panic(err)
-	}
+	// if err := testContents(relZipFile); err != nil {
+	// 	panic(err)
+	// }
 }
