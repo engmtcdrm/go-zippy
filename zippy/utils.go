@@ -2,21 +2,9 @@ package zippy
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
-
-var cwd string
-
-func init() {
-	var err error
-
-	cwd, err = os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-}
 
 // validateCopy validates the number of bytes written during a copy operation with
 // expected number of bytes.
@@ -41,7 +29,7 @@ func validateCopy(path string, written int64, expected int64) error {
 
 // removeDriveLetter removes the drive letter and colon from a Windows path.
 func removeDriveLetter(path string) string {
-	return strings.TrimPrefix(path, filepath.VolumeName(path))
+	return strings.TrimPrefix(strings.TrimPrefix(path, filepath.VolumeName(path)), "/")
 }
 
 // convertToZipPath removes the drive letter and colon from a Windows path and replaces
