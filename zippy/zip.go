@@ -14,9 +14,7 @@ import (
 // path is the file or directory to add.
 //
 // zipWriter is the zip.Writer to write to.
-//
-// baseDir is the base directory for relative paths.
-func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
+func zipFile(zipWriter *zip.Writer, path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -27,54 +25,29 @@ func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
 		return err
 	}
 
-	fmt.Println("baseDir:", baseDir)
-
-	var relPath string
-
-	if filepath.IsAbs(path) {
-		relPath = path
-	} else {
-		// Ensure both paths are absolute or relative
-		if !filepath.IsAbs(path) {
-			path, err = filepath.Abs(path)
-			if err != nil {
-				return err
-			}
-		}
-		if !filepath.IsAbs(baseDir) {
-			baseDir, err = filepath.Abs(baseDir)
-			if err != nil {
-				return err
-			}
-		}
-
-		relPath, err = filepath.Rel(baseDir, path)
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(path)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("Path:", path)
-		fmt.Println("RelPath:", relPath)
+		path, err = filepath.Rel(cwd, path)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Zip format always uses forward slash
-	header.Name = normalizePath(relPath)
+	header.Name = convertToZipPath(path)
+
 	if info.IsDir() {
 		header.Name += "/"
 	} else {
 		header.Method = zip.Deflate
 	}
 
-	fmt.Println("Header.Name:", header.Name)
-	fmt.Println()
-
 	writer, err := zipWriter.CreateHeader(header)
 	if err != nil {
 		return err
-	}
-
-	if info.IsDir() {
-		return nil
 	}
 
 	file, err := os.Open(path)
@@ -86,6 +59,10 @@ func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
 			err = fmt.Errorf("failed to close file: %w", closeErr)
 		}
 	}()
+
+	if info.IsDir() {
+		return nil
+	}
 
 	written, err := io.Copy(writer, file)
 	if err != nil {
@@ -102,28 +79,29 @@ func zipFile(path string, zipWriter *zip.Writer, baseDir string) error {
 // zipWriter is the zip.Writer to write to.
 //
 // file is the file or directory to add.
-func zipFiles(zipWriter *zip.Writer, file string) error {
-	fInfo, err := os.Stat(file)
-	if err != nil {
-		return err
-	}
+func zipFiles(zipWriter *zip.Writer, files ...string) error {
+	var err error
 
-	baseDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
+	for _, file := range files {
+		fInfo, err := os.Stat(file)
+		if err != nil {
+			return err
+		}
 
-	fmt.Println("CWD:", baseDir)
+		if fInfo.IsDir() {
+			err = filepath.WalkDir(file, func(path string, entry os.DirEntry, walkErr error) error {
+				if walkErr != nil {
+					return walkErr
+				}
+				return zipFile(zipWriter, path)
+			})
+		} else {
+			err = zipFile(zipWriter, file)
+		}
 
-	if fInfo.IsDir() {
-		err = filepath.WalkDir(file, func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			return zipFile(path, zipWriter, baseDir)
-		})
-	} else {
-		err = zipFile(file, zipWriter, baseDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -157,10 +135,8 @@ func Zip(dest string, files ...string) error {
 		}
 	}()
 
-	for _, file := range files {
-		if err := zipFiles(zipWriter, file); err != nil {
-			return err
-		}
+	if err := zipFiles(zipWriter, files...); err != nil {
+		return err
 	}
 
 	return nil
@@ -225,10 +201,8 @@ func AddToZip(dest string, files ...string) error {
 		}
 	}
 
-	for _, file := range files {
-		if err := zipFiles(zipWriter, file); err != nil {
-			return err
-		}
+	if err := zipFiles(zipWriter, files...); err != nil {
+		return err
 	}
 
 	return nil
@@ -284,7 +258,7 @@ func DeleteFromZip(dest string, files ...string) error {
 
 	filesToRemove := make(map[string]string)
 	for _, file := range files {
-		filesToRemove[file] = normalizePath(file)
+		filesToRemove[file] = convertToZipPath(file)
 	}
 
 	if err == nil {
