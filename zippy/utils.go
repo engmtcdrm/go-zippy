@@ -29,11 +29,12 @@ func validateCopy(path string, written int64, expected int64) error {
 
 // removeDriveLetter removes the drive letter and colon from a Windows path.
 func removeDriveLetter(path string) string {
-	return strings.TrimPrefix(strings.TrimPrefix(path, filepath.VolumeName(path)), "/")
+	return strings.TrimPrefix(path, filepath.VolumeName(path))
 }
 
 // convertToZipPath removes the drive letter and colon from a Windows path and replaces
 // backslashes with forward slashes.
 func convertToZipPath(path string) string {
-	return removeDriveLetter(strings.ReplaceAll(path, string(filepath.Separator), "/"))
+	zipPath := removeDriveLetter(strings.ReplaceAll(path, string(filepath.Separator), "/"))
+	return strings.TrimPrefix(zipPath, "/")
 }
