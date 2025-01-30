@@ -2,9 +2,21 @@ package zippy
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
+
+var cwd string
+
+func init() {
+	var err error
+
+	cwd, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+}
 
 // validateCopy validates the number of bytes written during a copy operation with
 // expected number of bytes.
@@ -32,7 +44,8 @@ func removeDriveLetter(path string) string {
 	return strings.TrimPrefix(path, filepath.VolumeName(path))
 }
 
-// normalizePath normalizes a path for use in a zip archive.
-func normalizePath(path string) string {
+// convertToZipPath removes the drive letter and colon from a Windows path and replaces
+// backslashes with forward slashes.
+func convertToZipPath(path string) string {
 	return removeDriveLetter(strings.ReplaceAll(path, string(filepath.Separator), "/"))
 }
