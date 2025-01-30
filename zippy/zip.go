@@ -25,18 +25,6 @@ func zipFile(zipWriter *zip.Writer, path string) error {
 		return err
 	}
 
-	if !filepath.IsAbs(path) {
-		path, err = filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-
-		path, err = filepath.Rel(cwd, path)
-		if err != nil {
-			return err
-		}
-	}
-
 	header.Name = convertToZipPath(path)
 
 	if info.IsDir() {
@@ -142,13 +130,13 @@ func Zip(dest string, files ...string) error {
 	return nil
 }
 
-// AddToZip adds multiple files or directories to an existing zip archive.
+// Add adds multiple files or directories to an existing zip archive.
 // The destination file will be created if it does not exist.
 //
 // dest is the destination zip archive path.
 //
 // files are the files or directories to compress.
-func AddToZip(dest string, files ...string) error {
+func Add(dest string, files ...string) error {
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
 		return err
 	}
@@ -208,12 +196,12 @@ func AddToZip(dest string, files ...string) error {
 	return nil
 }
 
-// DeleteFromZip deletes multiple files or directories from an existing zip archive.
+// Delete deletes multiple files or directories from an existing zip archive.
 //
 // dest is the destination zip archive path.
 //
 // files are the files or directories to delete.
-func DeleteFromZip(dest string, files ...string) error {
+func Delete(dest string, files ...string) error {
 	_, err := os.Stat(dest)
 	if err != nil {
 		return err
@@ -256,16 +244,15 @@ func DeleteFromZip(dest string, files ...string) error {
 		}
 	}()
 
-	filesToRemove := make(map[string]string)
-	for _, file := range files {
-		filesToRemove[file] = convertToZipPath(file)
+	for i, file := range files {
+		files[i] = convertToZipPath(file)
 	}
 
 	if err == nil {
 		for _, f := range zipReader.File {
 			shouldRemove := false
-			for fileToRemove := range filesToRemove {
-				if strings.HasPrefix(f.Name, filesToRemove[fileToRemove]+"/") || f.Name == filesToRemove[fileToRemove] {
+			for _, fileToRemove := range files {
+				if strings.HasPrefix(f.Name, fileToRemove+"/") || f.Name == fileToRemove {
 					shouldRemove = true
 					break
 				}
@@ -301,24 +288,14 @@ func DeleteFromZip(dest string, files ...string) error {
 		return err
 	}
 
-	zipOpen, err := os.Open(dest)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := zipOpen.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zip file: %w", closeErr)
-		}
-	}()
-
-	_, err = io.Copy(newDestZipFile, zipOpen)
-	if err != nil {
+	if err := newDestZipFile.Close(); err != nil {
 		return err
 	}
 
-	// if err := os.Rename(newDestZipFile.Name(), dest); err != nil {
-	// 	return err
-	// }
+	// TODO: Handle cross-device move
+	if err := os.Rename(newDestZipFile.Name(), dest); err != nil {
+		return err
+	}
 
 	return err
 }
