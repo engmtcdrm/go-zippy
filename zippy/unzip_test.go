@@ -102,13 +102,13 @@ func TestUnzip(t *testing.T) {
 			var err error
 
 			if tt.testName == "Bad Permissions Unzip Input Path" {
-				err = testutils.PermissionTest(tt.filePath, Unzip, tt.filePath, tt.dest)
+				err = testutils.PermissionTest1Arg(tt.filePath, Unzip, tt.filePath)
 			} else if tt.testName == "Bad Permissions Unzip Output Path" {
 				destDir := filepath.Dir(tt.dest)
 
-				err = testutils.PermissionTest(destDir, Unzip, tt.filePath, tt.dest)
+				err = testutils.PermissionTest1Arg(destDir, Unzip, tt.filePath)
 			} else {
-				err = Unzip(tt.filePath, tt.dest)
+				_, err = Unzip(tt.filePath)
 			}
 
 			if (err != nil) != tt.wantErr {
@@ -117,3 +117,5 @@ func TestUnzip(t *testing.T) {
 		})
 	}
 }
+
+// TODO: Add tests for UnzipTo
