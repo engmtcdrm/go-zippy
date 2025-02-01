@@ -122,7 +122,7 @@ func TestCreateZipFile(t *testing.T) {
 	}
 }
 
-// TODO: Add test for PermissionTest1Arg
+// [ ] TODO: Add test for PermissionTest1Arg
 
 func TestPermissionTest2Args(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "test-")
