@@ -3,6 +3,7 @@
 ## Zip Functions
 
 - [ ] Add Entries, support for glob
+- [ ] Update Entries, support for glob, add if file does not exist already
 - [x] [Delete Entries](#delete-entries)
   - [X] Add support for glob
 - [ ] [Freshen Entries](#freshen-entries)
