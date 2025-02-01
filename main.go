@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"example.com/m/zippy"
 	"example.com/m/zippy/testutils"
@@ -48,7 +50,7 @@ func testAbsZip(zipFile string) error {
 		return err
 	}
 
-	if err := zippy.Delete(zipFile, filepath.Join(tempDir, "subfolder0"), filepath.Join(tempDir, "bubba")); err != nil {
+	if err := zippy.Delete(zipFile, filepath.Join(tempDir, "subfolder0", "*"), "bubba/bubba*.txt"); err != nil {
 		return err
 	}
 
@@ -125,6 +127,49 @@ func main() {
 		panic(err)
 	}
 
+	testFiles := []string{
+		"t1",
+		"t2",
+		"testdir/",
+		"testdir/tt2",
+		"testdir/tt1",
+		"t1.txt",
+		"t2.txt",
+		"testdir/t2.txt",
+		"testdir/t1.txt",
+		"bubba/bubba/",
+		"bubba-123456.txt",
+		"bubba/",
+		"bubba/bubba/bubba-19023850.txt",
+		"bubba/bubba-1204023.txt",
+		"testdir2/",
+		"testdir2/bubba/",
+		"testdir2/bubba/bubba-190238591835.txt",
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter some text: ")
+	matchString, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+		return
+	}
+
+	matchString = strings.ReplaceAll(matchString, "\r\n", "")
+
+	for _, testFile := range testFiles {
+		match, err := filepath.Match(matchString, testFile)
+		if err != nil {
+			panic(err)
+		}
+
+		if match {
+			fmt.Printf("Matched '%s' with '%s'\n", pp.Green(testFile), pp.Green(match))
+		} else {
+			fmt.Printf("Did not match '%s' with '%s'\n", pp.Red(testFile), pp.Red(match))
+		}
+	}
+
 	// Test absolute path
 	if err := testAbsZip(absZipFile); err != nil {
 		panic(err)
@@ -140,24 +185,17 @@ func main() {
 		panic(err)
 	}
 
-	// fmt.Printf("Unzipped files:\n\n")
-
-	// for _, unzippedFile := range unzippedFiles {
-
-	// 	fmt.Printf("    %s [%s]\n", pp.Green(unzippedFile.Name), filepath.Join(filepath.VolumeName(cwd), filepath.FromSlash(unzippedFile.Name)))
-	// }
-
 	_, err = zippy.UnzipTo(absZipFile, absZip+"2")
 	if err != nil {
 		panic(err)
 	}
 
 	// Test relative path
-	// if err := testRelPath(relZipFile); err != nil {
-	// 	panic(err)
-	// }
+	if err := testRelPath(relZipFile); err != nil {
+		panic(err)
+	}
 
-	// if err := testContents(relZipFile); err != nil {
-	// 	panic(err)
-	// }
+	if err := testContents(relZipFile); err != nil {
+		panic(err)
+	}
 }
