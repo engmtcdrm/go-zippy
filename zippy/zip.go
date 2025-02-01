@@ -6,8 +6,35 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
+
+func copyZipFile(w *zip.Writer, f *zip.File) error {
+	fWriter, err := w.CreateHeader(&f.FileHeader)
+	if err != nil {
+		return err
+	}
+
+	rc, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := rc.Close(); closeErr != nil {
+			err = fmt.Errorf("failed to close file: %w", closeErr)
+		}
+	}()
+
+	written, err := io.Copy(fWriter, rc)
+	if err != nil {
+		return err
+	}
+
+	info := f.FileInfo()
+
+	err = validateCopy(f.Name, written, info.Size())
+
+	return err
+}
 
 // zipFile adds a file or directory to a zip archive.
 //
@@ -76,6 +103,7 @@ func zipFiles(zipWriter *zip.Writer, files ...string) error {
 			return err
 		}
 
+		// [ ] TODO: Add support for glob patterns
 		if fInfo.IsDir() {
 			err = filepath.WalkDir(file, func(path string, entry os.DirEntry, walkErr error) error {
 				if walkErr != nil {
@@ -95,7 +123,7 @@ func zipFiles(zipWriter *zip.Writer, files ...string) error {
 	return err
 }
 
-// Zip adds multiple files or directories to a zip archive.
+// Zip adds files or directories to a zip archive.
 // The destination file will be created if it does not exist.
 //
 // dest is the destination zip archive path.
@@ -130,7 +158,7 @@ func Zip(dest string, files ...string) error {
 	return nil
 }
 
-// Add adds multiple files or directories to an existing zip archive.
+// Add adds files or directories to an existing zip archive.
 // The destination file will be created if it does not exist.
 //
 // dest is the destination zip archive path.
@@ -171,21 +199,7 @@ func Add(dest string, files ...string) error {
 	// Copy existing files to the new zip archive if zip file exists
 	if err == nil {
 		for _, f := range zipReader.File {
-			// TODO: Put into own function for defer reasons
-			fWriter, err := zipWriter.CreateHeader(&f.FileHeader)
-			if err != nil {
-				return err
-			}
-			rc, err := f.Open()
-			if err != nil {
-				return err
-			}
-
-			_, err = io.Copy(fWriter, rc)
-			rc.Close()
-			if err != nil {
-				return err
-			}
+			copyZipFile(zipWriter, f)
 		}
 	}
 
@@ -196,11 +210,11 @@ func Add(dest string, files ...string) error {
 	return nil
 }
 
-// Delete deletes multiple files or directories from an existing zip archive.
+// Delete deletes files or directories from an existing zip archive.
 //
 // dest is the destination zip archive path.
 //
-// files are the files or directories to delete.
+// files are the files or directories to delete. Glob patterns are supported.
 func Delete(dest string, files ...string) error {
 	_, err := os.Stat(dest)
 	if err != nil {
@@ -252,31 +266,22 @@ func Delete(dest string, files ...string) error {
 		for _, f := range zipReader.File {
 			shouldRemove := false
 			for _, fileToRemove := range files {
-				if strings.HasPrefix(f.Name, fileToRemove+"/") || f.Name == fileToRemove {
+				match, err := filepath.Match(fileToRemove, f.Name)
+				if err != nil {
+					return err
+				}
+
+				if match {
 					shouldRemove = true
 					break
 				}
 			}
+
 			if shouldRemove {
 				continue
 			}
 
-			// TODO: Put into own function for defer reasons
-			fWriter, err := zipWriter.CreateHeader(&f.FileHeader)
-			if err != nil {
-				return err
-			}
-
-			rc, err := f.Open()
-			if err != nil {
-				return err
-			}
-
-			_, err = io.Copy(fWriter, rc)
-			rc.Close()
-			if err != nil {
-				return err
-			}
+			copyZipFile(zipWriter, f)
 		}
 	}
 
@@ -292,7 +297,7 @@ func Delete(dest string, files ...string) error {
 		return err
 	}
 
-	// TODO: Handle cross-device move
+	// [ ] TODO: Handle cross-device move
 	if err := os.Rename(newDestZipFile.Name(), dest); err != nil {
 		return err
 	}
