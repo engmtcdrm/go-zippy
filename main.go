@@ -46,7 +46,7 @@ func testAbsZip(zipFile string) error {
 		return err
 	}
 
-	if err := zippy.Add(zipFile, tempFile.Name(), filepath.Join(tempDir, "bubba")); err != nil {
+	if err := zippy.Add(zipFile, tempFile.Name(), filepath.Join(tempDir, "bubba", "*")); err != nil {
 		return err
 	}
 
