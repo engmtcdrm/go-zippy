@@ -8,13 +8,18 @@ import (
 	"path/filepath"
 )
 
-func copyZipFile(w *zip.Writer, f *zip.File) error {
-	fWriter, err := w.CreateHeader(&f.FileHeader)
+// copyZipFile copies a file from a zip archive to another zip archive.
+//
+// zipWriter is the zip.Writer to write to.
+//
+// file is the file to copy.
+func copyZipFile(zipWriter *zip.Writer, file *zip.File) error {
+	fWriter, err := zipWriter.CreateHeader(&file.FileHeader)
 	if err != nil {
 		return err
 	}
 
-	rc, err := f.Open()
+	rc, err := file.Open()
 	if err != nil {
 		return err
 	}
@@ -29,18 +34,67 @@ func copyZipFile(w *zip.Writer, f *zip.File) error {
 		return err
 	}
 
-	info := f.FileInfo()
+	info := file.FileInfo()
 
-	err = validateCopy(f.Name, written, info.Size())
+	err = validateCopy(file.Name, written, info.Size())
 
 	return err
 }
 
-// zipFile adds a file or directory to a zip archive.
-//
-// path is the file or directory to add.
+// copyZipFiles copies files from a zip archive to another zip archive.
 //
 // zipWriter is the zip.Writer to write to.
+//
+// files are the files to copy.
+func copyZipFiles(zipWriter *zip.Writer, files []*zip.File) error {
+	for _, file := range files {
+		if err := copyZipFile(zipWriter, file); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// copyZipFilesRemove copies files from a zip archive to another zip archive, removing files that match the given patterns.
+//
+// zipWriter is the zip.Writer to write to.
+//
+// files are the files to copy.
+//
+// patterns are the patterns to match files to remove.
+func copyZipFilesRemove(zipWriter *zip.Writer, files []*zip.File, patterns []string) error {
+	for _, file := range files {
+		shouldRemove := false
+		for _, fileToRemove := range patterns {
+			match, err := filepath.Match(fileToRemove, file.Name)
+			if err != nil {
+				return err
+			}
+
+			if match {
+				shouldRemove = true
+				break
+			}
+		}
+
+		if shouldRemove {
+			continue
+		}
+
+		if err := copyZipFile(zipWriter, file); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// zipFile adds a file or directory to a zip archive.
+//
+// zipWriter is the zip.Writer to write to.
+//
+// path is the file or directory to add.
 func zipFile(zipWriter *zip.Writer, path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -93,34 +147,44 @@ func zipFile(zipWriter *zip.Writer, path string) error {
 //
 // zipWriter is the zip.Writer to write to.
 //
-// file is the file or directory to add.
+// files are the files or directories to add. Glob patterns are supported.
 func zipFiles(zipWriter *zip.Writer, files ...string) error {
-	var err error
-
 	for _, file := range files {
-		fInfo, err := os.Stat(file)
+		fileMatches, err := filepath.Glob(file)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to glob pattern '%s': %v", file, err)
 		}
 
-		// [ ] TODO: Add support for glob patterns
-		if fInfo.IsDir() {
-			err = filepath.WalkDir(file, func(path string, entry os.DirEntry, walkErr error) error {
-				if walkErr != nil {
-					return walkErr
-				}
-				return zipFile(zipWriter, path)
-			})
-		} else {
-			err = zipFile(zipWriter, file)
+		// If no matches found, treat file as a literal path
+		if len(fileMatches) == 0 {
+			fileMatches = append(fileMatches, file)
 		}
 
-		if err != nil {
-			return err
+		for _, fileMatch := range fileMatches {
+			fInfo, err := os.Stat(fileMatch)
+			if err != nil {
+				return err
+			}
+
+			if fInfo.IsDir() {
+				err = filepath.WalkDir(fileMatch, func(path string, entry os.DirEntry, walkErr error) error {
+					if walkErr != nil {
+						return walkErr
+					}
+
+					return zipFile(zipWriter, path)
+				})
+			} else {
+				err = zipFile(zipWriter, fileMatch)
+			}
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	return err
+	return nil
 }
 
 // Zip adds files or directories to a zip archive.
@@ -128,7 +192,7 @@ func zipFiles(zipWriter *zip.Writer, files ...string) error {
 //
 // dest is the destination zip archive path.
 //
-// files are the files or directories to compress.
+// files are the files or directories to archived. Glob patterns are supported.
 func Zip(dest string, files ...string) error {
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
 		return err
@@ -163,7 +227,7 @@ func Zip(dest string, files ...string) error {
 //
 // dest is the destination zip archive path.
 //
-// files are the files or directories to compress.
+// files are the files or directories to archive. Glob patterns are supported.
 func Add(dest string, files ...string) error {
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
 		return err
@@ -262,26 +326,10 @@ func Delete(dest string, files ...string) error {
 		files[i] = convertToZipPath(file)
 	}
 
+	// Copy existing files to the new zip archive if zip file exists
 	if err == nil {
-		for _, f := range zipReader.File {
-			shouldRemove := false
-			for _, fileToRemove := range files {
-				match, err := filepath.Match(fileToRemove, f.Name)
-				if err != nil {
-					return err
-				}
-
-				if match {
-					shouldRemove = true
-					break
-				}
-			}
-
-			if shouldRemove {
-				continue
-			}
-
-			copyZipFile(zipWriter, f)
+		if err := copyZipFilesRemove(zipWriter, zipReader.File, files); err != nil {
+			return err
 		}
 	}
 
