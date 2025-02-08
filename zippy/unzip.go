@@ -9,6 +9,32 @@ import (
 	"path/filepath"
 )
 
+type UnzippyInterface interface {
+	// Extract extracts the contents of a zip archive to the current working directory.
+	Extract() error
+
+	// ExtractTo extracts the contents of a zip archive to a destination directory.
+	//
+	// dest is the destination directory to extract to.
+	ExtractTo(dest string) error
+
+	// ExtractFile extracts a file from a zip archive.
+	//
+	// file are the files to extract.
+	ExtractFiles(files ...string) error
+
+	// ExtractFileTo extracts a file from a zip archive to a destination directory.
+	//
+	// file are the files to extract.
+	// dest is the destination directory to extract to.
+	ExtractFilesTo(dest string, files ...string) error
+}
+
+type Unzippy struct {
+	Path string // Path is the path to the zip archive.
+	Junk bool   // Junk specifies whether to junk the path when extracting.
+}
+
 // unzipFile extracts a single file from a zip archive.
 // The file is extracted to the specified path. The file
 // is validated using the CRC32 checksum and the size
