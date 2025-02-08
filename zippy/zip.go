@@ -387,29 +387,13 @@ type ZippyInterface interface {
 	// Freshen updates files in a zip archive if the source file is newer.
 	Freshen() error
 
-	// Extract extracts the contents of a zip archive to the current working directory.
-	Extract() error
-
-	// ExtractTo extracts the contents of a zip archive to a destination directory.
-	//
-	// dest is the destination directory to extract to.
-	ExtractTo(dest string) error
-
-	// ExtractFile extracts a file from a zip archive.
-	//
-	// file are the files to extract.
-	ExtractFiles(files ...string) error
-
-	// ExtractFileTo extracts a file from a zip archive to a destination directory.
-	//
-	// file are the files to extract.
-	// dest is the destination directory to extract to.
-	ExtractFilesTo(dest string, files ...string) error
+	// Copy copies files from a zip archive to a destination directory.
+	Copy(dest string, files ...string) error
 }
 
 type Zippy struct {
 	Path          string // Path is the path to the zip archive.
-	Junk          bool   // Junk specifies whether to junk the path when archiving or extracting.
+	Junk          bool   // Junk specifies whether to junk the path when archiving.
 	existingFiles map[string]*zip.File
 	w             *zip.Writer
 	rc            *zip.ReadCloser
@@ -424,6 +408,8 @@ func NewZippy(path string) *Zippy {
 }
 
 // Add adds files or directories to a zip archive.
+//
+// files are the files or directories to archive. Glob patterns are supported.
 func (z *Zippy) Add(files ...string) error {
 	if err := os.MkdirAll(filepath.Dir(z.Path), os.ModePerm); err != nil {
 		return err
@@ -494,6 +480,8 @@ func (z *Zippy) Add(files ...string) error {
 }
 
 // Delete deletes files or directories from an existing zip archive.
+//
+// files are the files or directories to delete. Glob patterns are supported.
 func (z *Zippy) Delete(files ...string) error {
 	_, err := os.Stat(z.Path)
 	if err != nil {
@@ -580,46 +568,13 @@ func (z *Zippy) Freshen() error {
 	return nil
 }
 
-// Extract extracts the contents of a zip archive to the current working directory.
-func (z *Zippy) Extract() error {
-	// Implementation of Extract method
+// Copy copies files from existing zip archive to a new zip archive.
+//
+// dest is the new zip archive path.
+// files are the files to copy. If no files are provided, all files will be copied.
+func (z *Zippy) Copy(dest string, files ...string) error {
+	// Implementation of Copy function
 	return nil
-}
-
-// ExtractTo extracts the contents of a zip archive to a destination directory.
-func (z *Zippy) ExtractTo(dest string) error {
-	// Implementation of ExtractTo method
-	return nil
-}
-
-// ExtractFile extracts a file from a zip archive.
-func (z *Zippy) ExtractFiles(files ...string) error {
-	// Implementation of ExtractFile method
-	return nil
-}
-
-// ExtractFileTo extracts a file from a zip archive to a destination directory.
-func (z *Zippy) ExtractFilesTo(dest string, files ...string) error {
-	// Implementation of ExtractFileTo method
-	return nil
-}
-
-func (z *Zippy) Contents() ([]*zip.File, error) {
-	var err error
-
-	if z.rc == nil {
-		z.rc, err = zip.OpenReader(z.Path)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if closeErr := z.rc.Close(); closeErr != nil {
-				err = closeErr
-			}
-		}()
-	}
-
-	return z.rc.File, err
 }
 
 // copyZipFile copies a file from a zip archive to another zip archive.
