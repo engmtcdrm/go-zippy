@@ -55,7 +55,7 @@ func testAbsZip() error {
 		return err
 	}
 
-	if err := absZip.Delete(filepath.Join(tempDir, "subfolder0", "*"), "bubba/bubba*.txt"); err != nil {
+	if err := absZip.Delete(filepath.Join(tempDir, "subfolder0", "*"), filepath.Join(tempDir, "bubba/bubba*.txt")); err != nil {
 		return err
 	}
 
@@ -74,13 +74,13 @@ func testAbsZip() error {
 	return err
 }
 
-func testContents(zippy *zippy.Zippy) error {
-	zFiles, err := zippy.Contents()
+func testContents(z *zippy.Zippy) error {
+	zFiles, err := zippy.Contents(z.Path)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Contents of zip file (%s):\n\n", pp.Green(zippy.Path))
+	fmt.Printf("Contents of zip file (%s):\n\n", pp.Green(z.Path))
 
 	var fileCnt = 0
 
