@@ -13,7 +13,12 @@ import (
 	pp "github.com/engmtcdrm/go-prettyprint"
 )
 
-func testAbsZip(zipFile string) error {
+var (
+	absZip *zippy.Zippy
+	relZip *zippy.Zippy
+)
+
+func testAbsZip() error {
 	tempDir, err := os.MkdirTemp("", "test-")
 	if err != nil {
 		return err
@@ -28,7 +33,7 @@ func testAbsZip(zipFile string) error {
 		return err
 	}
 
-	if err := zippy.Zip(zipFile, tempDir); err != nil {
+	if err := absZip.Add(tempDir); err != nil {
 		return err
 	}
 
@@ -46,24 +51,36 @@ func testAbsZip(zipFile string) error {
 		return err
 	}
 
-	if err := zippy.Add(zipFile, tempFile.Name(), filepath.Join(tempDir, "bubba", "*")); err != nil {
+	if err := absZip.Add(tempFile.Name(), filepath.Join(tempDir, "bubba", "*")); err != nil {
 		return err
 	}
 
-	if err := zippy.Delete(zipFile, filepath.Join(tempDir, "subfolder0", "*"), "bubba/bubba*.txt"); err != nil {
+	if err := absZip.Delete(filepath.Join(tempDir, "subfolder0", "*"), "bubba/bubba*.txt"); err != nil {
 		return err
 	}
+
+	// if err := zippy.Zip(zipFile, tempDir); err != nil {
+	// 	return err
+	// }
+
+	// if err := zippy.Add(zipFile, tempFile.Name(), filepath.Join(tempDir, "bubba", "*")); err != nil {
+	// 	return err
+	// }
+
+	// if err := zippy.Delete(zipFile, filepath.Join(tempDir, "subfolder0", "*"), "bubba/bubba*.txt"); err != nil {
+	// 	return err
+	// }
 
 	return err
 }
 
-func testContents(zipFile string) error {
-	zFiles, err := zippy.Contents(zipFile)
+func testContents(zippy *zippy.Zippy) error {
+	zFiles, err := zippy.Contents()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Contents of zip file (%s):\n\n", pp.Green(zipFile))
+	fmt.Printf("Contents of zip file (%s):\n\n", pp.Green(zippy.Path))
 
 	var fileCnt = 0
 
@@ -94,9 +111,15 @@ func testRelPath(zipFile string) error {
 		return err
 	}
 
-	if err := zippy.Zip(zipFile, relDir); err != nil {
+	z := zippy.NewZippy(zipFile)
+
+	if err := z.Add(relDir); err != nil {
 		return err
 	}
+
+	// if err := zippy.Zip(zipFile, relDir); err != nil {
+	// 	return err
+	// }
 
 	return err
 }
@@ -110,17 +133,17 @@ func main() {
 		panic(err)
 	}
 
-	absZip := filepath.Join(*baseDir, "abs-zip")
-	relZip := filepath.Join(*baseDir, "rel-zip")
-	absZipFile := filepath.Join(absZip, "test.zip")
-	relZipFile := filepath.Join(relZip, "test.zip")
+	absBasePath := filepath.Join(*baseDir, "abs-zip")
+	relBasePath := filepath.Join(*baseDir, "rel-zip")
+	absZip = zippy.NewZippy(filepath.Join(absBasePath, "test.zip"))
+	relZip = zippy.NewZippy(filepath.Join(relBasePath, "test.zip"))
 
 	fmt.Println("Current working directory:", pp.Green(cwd))
 	fmt.Println("Base directory:", pp.Green(*baseDir))
-	fmt.Println("Absolute path zip directory:", pp.Green(absZip))
-	fmt.Println("Relative path zip directory:", pp.Green(relZip))
-	fmt.Println("Absolute path zip file:", pp.Green(absZipFile))
-	fmt.Println("Relative path zip file:", pp.Green(relZipFile))
+	fmt.Println("Absolute path zip directory:", pp.Green(absBasePath))
+	fmt.Println("Relative path zip directory:", pp.Green(relBasePath))
+	fmt.Println("Absolute path zip file:", pp.Green(absZip.Path))
+	fmt.Println("Relative path zip file:", pp.Green(relZip.Path))
 	fmt.Println()
 
 	if err := os.RemoveAll(*baseDir); err != nil {
@@ -171,31 +194,31 @@ func main() {
 	}
 
 	// Test absolute path
-	if err := testAbsZip(absZipFile); err != nil {
+	if err := testAbsZip(); err != nil {
 		panic(err)
 	}
 
-	if err := testContents(absZipFile); err != nil {
+	if err := testContents(absZip); err != nil {
 		panic(err)
 	}
 
 	// Test unzipping absolute path zip file
-	_, err = zippy.Unzip(absZipFile)
+	_, err = zippy.Unzip(absZip.Path)
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = zippy.UnzipTo(absZipFile, absZip+"2")
+	_, err = zippy.UnzipTo(absZip.Path, absBasePath+"2")
 	if err != nil {
 		panic(err)
 	}
 
 	// Test relative path
-	if err := testRelPath(relZipFile); err != nil {
+	if err := testRelPath(relZip.Path); err != nil {
 		panic(err)
 	}
 
-	if err := testContents(relZipFile); err != nil {
+	if err := testContents(relZip); err != nil {
 		panic(err)
 	}
 }
