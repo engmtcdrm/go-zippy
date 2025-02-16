@@ -9,32 +9,6 @@ import (
 	"path/filepath"
 )
 
-type UnzippyInterface interface {
-	// Extract extracts the contents of a zip archive to the current working directory.
-	Extract() error
-
-	// ExtractTo extracts the contents of a zip archive to a destination directory.
-	//
-	// dest is the destination directory to extract to.
-	ExtractTo(dest string) error
-
-	// ExtractFile extracts a file from a zip archive.
-	//
-	// file are the files to extract.
-	ExtractFiles(files ...string) error
-
-	// ExtractFileTo extracts a file from a zip archive to a destination directory.
-	//
-	// file are the files to extract.
-	// dest is the destination directory to extract to.
-	ExtractFilesTo(dest string, files ...string) error
-}
-
-type Unzippy struct {
-	Path string // Path is the path to the zip archive.
-	Junk bool   // Junk specifies whether to junk the path when extracting.
-}
-
 // unzipFile extracts a single file from a zip archive.
 // The file is extracted to the specified path. The file
 // is validated using the CRC32 checksum and the size
@@ -83,22 +57,56 @@ func unzipFile(file *zip.File, filePath string) error {
 	return err
 }
 
-// Unzip extracts the contents of a zip archive to the same directory as the archive.
-//
-// path is the path to the zip archive.
-func Unzip(path string) ([]*zip.File, error) {
-	return UnzipTo(path, filepath.Dir(path))
+type UnzippyInterface interface {
+	// Extract extracts the contents of a zip archive to the current working directory.
+	Extract() error
+
+	// ExtractTo extracts the contents of a zip archive to a destination directory.
+	//
+	// dest is the destination directory to extract to.
+	ExtractTo(dest string) error
+
+	// ExtractFile extracts a file from a zip archive.
+	//
+	// file are the files to extract.
+	ExtractFiles(files ...string) error
+
+	// ExtractFileTo extracts a file from a zip archive to a destination directory.
+	//
+	// file are the files to extract.
+	// dest is the destination directory to extract to.
+	ExtractFilesTo(dest string, files ...string) error
+
+	// Freshen existing files, i.e., extract only those files that already exist on disk and that are newer than the disk copies.
+	Freshen() error
 }
 
-// UnzipTo extracts the contents of a zip archive to a destination directory.
+type Unzippy struct {
+	Path string // Path is the path to the zip archive.
+	Junk bool   // Junk specifies whether to junk the path when extracting.
+}
+
+func NewUnzippy(path string) *Unzippy {
+	return &Unzippy{
+		Path: path,
+		Junk: false,
+	}
+}
+
+// Extract the contents of a zip archive to the same directory as the archive.
+func (uz *Unzippy) Extract() ([]*zip.File, error) {
+	return uz.ExtractTo(filepath.Dir(uz.Path))
+}
+
+// ExtractTo extracts the contents of a zip archive to a destination directory.
 // The destination directory will be created if it does not exist.
 // The file modification times will be preserved.
 //
 // path is the path to the zip archive.
 //
 // dest is the destination directory.
-func UnzipTo(path string, dest string) ([]*zip.File, error) {
-	zipReader, err := zip.OpenReader(path)
+func (uz *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
+	zipReader, err := zip.OpenReader(uz.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -134,4 +142,29 @@ func UnzipTo(path string, dest string) ([]*zip.File, error) {
 	}
 
 	return zipReader.File, err
+}
+
+// ExtractFiles extracts the specified files from a zip archive.
+//
+// files are the files to extract.
+func (uz *Unzippy) ExtractFiles(files ...string) error {
+	return uz.ExtractFilesTo(filepath.Dir(uz.Path), files...)
+}
+
+// ExtractFilesTo extracts the specified files from a zip archive to a destination directory.
+// The destination directory will be created if it does not exist.
+// The file modification times will be preserved.
+//
+// files are the files to extract.
+//
+// dest is the destination directory.
+func (uz *Unzippy) ExtractFilesTo(dest string, files ...string) error {
+	// [ ] TODO: Implement ExtractFilesTo
+	return nil
+}
+
+// Freshen existing files, i.e., extract only those files that already exist on disk and that are newer than the disk copies.
+func (uz *Unzippy) Freshen() error {
+	// [ ] TODO: Implement Freshen
+	return nil
 }
