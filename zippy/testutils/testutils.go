@@ -140,6 +140,43 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) error {
 	return err
 }
 
+// PermissionTest0Arg is a helper function to wrap another function that requires a file to have specific permissions.
+//
+// filePermPath is the path to the file to change permissions on.
+//
+// funcToRun is the function to run that requires the file to have specific permissions.
+func PermissionTest0Arg(filePermPath string, funcToRun func() ([]*zip.File, error)) error {
+	var err error
+
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+		defer func() {
+			// Restore permissions after the test
+			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
+			if runError := cmd.Run(); runError != nil {
+				err = runError
+			}
+		}()
+	} else {
+		if err := os.Chmod(filePermPath, 0000); err != nil {
+			return err
+		}
+		defer func() {
+			// Restore permissions after the test
+			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
+				err = restoreErr
+			}
+		}()
+	}
+
+	_, err = funcToRun()
+
+	return err
+}
+
 // PermissionTest1Arg is a helper function to wrap another function that requires a file to have specific permissions.
 //
 // filePermPath is the path to the file to change permissions on.
