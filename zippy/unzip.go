@@ -9,6 +9,32 @@ import (
 	"path/filepath"
 )
 
+type UnzippyInterface interface {
+	Extract() ([]*zip.File, error)
+	ExtractTo(dest string) ([]*zip.File, error)
+	ExtractFiles(files ...string) ([]*zip.File, error)
+	ExtractFilesTo(dest string, files ...string) ([]*zip.File, error)
+}
+
+type Unzippy struct {
+	Path      string // Path to the zip archive.
+	Junk      bool   // Junk specifies whether to junk the path of files when extracting.
+	Overwrite bool   // Overwrite specifies whether to overwrite files when extracting.
+}
+
+func NewUnzippy(path string) *Unzippy {
+	return &Unzippy{
+		Path:      path,
+		Junk:      false,
+		Overwrite: false,
+	}
+}
+
+func (u *Unzippy) SetJunk(junk bool) *Unzippy {
+	u.Junk = junk
+	return u
+}
+
 // unzipFile extracts a single file from a zip archive.
 // The file is extracted to the specified path. The file
 // is validated using the CRC32 checksum and the size
@@ -18,7 +44,7 @@ import (
 // file is the file to extract.
 //
 // filePath is the path to extract the file to.
-func unzipFile(file *zip.File, filePath string) error {
+func (u *Unzippy) unzipFile(file *zip.File, filePath string) error {
 	zippedFile, err := file.Open()
 	if err != nil {
 		return err
@@ -28,6 +54,12 @@ func unzipFile(file *zip.File, filePath string) error {
 			err = fmt.Errorf("failed to close zipped file: %w", closeErr)
 		}
 	}()
+
+	// Ensure the directory for the inflated file exists
+	fileDir := filepath.Dir(filePath)
+	if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
+		return err
+	}
 
 	outFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 	if err != nil {
@@ -57,56 +89,38 @@ func unzipFile(file *zip.File, filePath string) error {
 	return err
 }
 
-type UnzippyInterface interface {
-	// Extract extracts the contents of a zip archive to the current working directory.
-	Extract() error
-
-	// ExtractTo extracts the contents of a zip archive to a destination directory.
-	//
-	// dest is the destination directory to extract to.
-	ExtractTo(dest string) error
-
-	// ExtractFile extracts a file from a zip archive.
-	//
-	// file are the files to extract.
-	ExtractFiles(files ...string) error
-
-	// ExtractFileTo extracts a file from a zip archive to a destination directory.
-	//
-	// file are the files to extract.
-	// dest is the destination directory to extract to.
-	ExtractFilesTo(dest string, files ...string) error
-
-	// Freshen existing files, i.e., extract only those files that already exist on disk and that are newer than the disk copies.
-	Freshen() error
+// Extract all files from zip archive to the same directory as the archive.
+func (u *Unzippy) Extract() ([]*zip.File, error) {
+	return u.ExtractFiles()
 }
 
-type Unzippy struct {
-	Path string // Path is the path to the zip archive.
-	Junk bool   // Junk specifies whether to junk the path when extracting.
-}
-
-func NewUnzippy(path string) *Unzippy {
-	return &Unzippy{
-		Path: path,
-		Junk: false,
-	}
-}
-
-// Extract the contents of a zip archive to the same directory as the archive.
-func (uz *Unzippy) Extract() ([]*zip.File, error) {
-	return uz.ExtractTo(filepath.Dir(uz.Path))
-}
-
-// ExtractTo extracts the contents of a zip archive to a destination directory.
+// ExtractTo extracts all files from the zip archive to a destination directory.
 // The destination directory will be created if it does not exist.
 // The file modification times will be preserved.
 //
-// path is the path to the zip archive.
+// dest is the destination directory.
+func (u *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
+	return u.ExtractFilesTo(dest)
+}
+
+// ExtractFiles extracts the specified files from the zip archive.
+//
+// files to be extracted. If no files are specified, all files will be extracted.
+// Glob patterns are supported.
+func (u *Unzippy) ExtractFiles(files ...string) ([]*zip.File, error) {
+	return u.ExtractFilesTo(filepath.Dir(u.Path), files...)
+}
+
+// ExtractFilesTo extracts the specified files from the zip archive to a destination directory.
+// The destination directory will be created if it does not exist.
+// The file modification times will be preserved.
 //
 // dest is the destination directory.
-func (uz *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
-	zipReader, err := zip.OpenReader(uz.Path)
+//
+// files to be extracted. If no files are specified, all files will be extracted.
+// Glob patterns are supported.
+func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, error) {
+	zipReader, err := zip.OpenReader(u.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +130,30 @@ func (uz *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
 		}
 	}()
 
-	for _, file := range zipReader.File {
+	extFiles := zipReader.File
+
+	// If we have files to extract, filter the files to extract
+	if files != nil {
+		extFiles = []*zip.File{}
+		for _, file := range zipReader.File {
+			for _, f := range files {
+				match, err := filepath.Match(f, file.Name)
+				if err != nil {
+					return nil, err
+				}
+
+				if match {
+					extFiles = append(extFiles, file)
+				}
+			}
+		}
+	}
+
+	for _, file := range extFiles {
+		if u.Junk {
+			file.Name = filepath.Base(file.Name)
+		}
+
 		filePath := filepath.Join(dest, file.Name)
 
 		if file.FileInfo().IsDir() {
@@ -124,13 +161,7 @@ func (uz *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
 				return nil, err
 			}
 		} else {
-			// Ensure the directory for the inflated file exists
-			fileDir := filepath.Dir(filePath)
-			if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
-				return nil, err
-			}
-
-			if err := unzipFile(file, filePath); err != nil {
+			if err := u.unzipFile(file, filePath); err != nil {
 				return nil, err
 			}
 		}
@@ -141,30 +172,5 @@ func (uz *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
 		}
 	}
 
-	return zipReader.File, err
-}
-
-// ExtractFiles extracts the specified files from a zip archive.
-//
-// files are the files to extract.
-func (uz *Unzippy) ExtractFiles(files ...string) error {
-	return uz.ExtractFilesTo(filepath.Dir(uz.Path), files...)
-}
-
-// ExtractFilesTo extracts the specified files from a zip archive to a destination directory.
-// The destination directory will be created if it does not exist.
-// The file modification times will be preserved.
-//
-// files are the files to extract.
-//
-// dest is the destination directory.
-func (uz *Unzippy) ExtractFilesTo(dest string, files ...string) error {
-	// [ ] TODO: Implement ExtractFilesTo
-	return nil
-}
-
-// Freshen existing files, i.e., extract only those files that already exist on disk and that are newer than the disk copies.
-func (uz *Unzippy) Freshen() error {
-	// [ ] TODO: Implement Freshen
-	return nil
+	return extFiles, err
 }
