@@ -202,13 +202,22 @@ func main() {
 		panic(err)
 	}
 
+	uzippy := zippy.NewUnzippy(absZip.Path)
+
 	// Test unzipping absolute path zip file
-	_, err = zippy.Unzip(absZip.Path)
+	_, err = uzippy.Extract()
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = zippy.UnzipTo(absZip.Path, absBasePath+"2")
+	_, err = uzippy.ExtractTo(absBasePath + "2")
+	if err != nil {
+		panic(err)
+	}
+
+	uzippy.Junk = true
+
+	_, err = uzippy.ExtractFilesTo(absBasePath+"3", "*test0*.txt")
 	if err != nil {
 		panic(err)
 	}
