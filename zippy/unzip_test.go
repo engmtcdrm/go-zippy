@@ -41,8 +41,10 @@ func TestUnzipFile(t *testing.T) {
 	}
 	defer zipReader.Close()
 
+	u := NewUnzippy(zipFile.Name())
+
 	for _, file := range zipReader.File {
-		err := unzipFile(file, filepath.Join(tempDir, "test_output"))
+		err := u.unzipFile(file, filepath.Join(tempDir, "test_output", file.Name))
 		if err != nil {
 			t.Errorf("unzipFile() error = %v", err)
 		}
@@ -99,20 +101,21 @@ func TestUnzip(t *testing.T) {
 				}()
 			}
 
+			uz := NewUnzippy(tt.filePath)
+
 			var err error
 
 			if tt.testName == "Bad Permissions Unzip Input Path" {
-				err = testutils.PermissionTest1Arg(tt.filePath, Unzip, tt.filePath)
+				err = testutils.PermissionTest0Arg(tt.filePath, uz.Extract)
 			} else if tt.testName == "Bad Permissions Unzip Output Path" {
 				destDir := filepath.Dir(tt.dest)
-
-				err = testutils.PermissionTest1Arg(destDir, Unzip, tt.filePath)
+				err = testutils.PermissionTest1Arg(destDir, uz.ExtractTo, tt.dest)
 			} else {
-				_, err = Unzip(tt.filePath)
+				_, err = uz.ExtractTo(tt.dest)
 			}
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Unzip() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ExtractTo() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
