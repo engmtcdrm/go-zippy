@@ -252,9 +252,7 @@ func PermissionTest2Args(filePermPath string, funcToRun func(string, string) err
 		}()
 	}
 
-	err = funcToRun(arg1, arg2)
-
-	return err
+	return funcToRun(arg1, arg2)
 }
 
 // PermissionTestVariadic is a helper function to wrap another function that requires a file to have specific permissions.
@@ -294,7 +292,5 @@ func PermissionTestVariadic(filePermPath string, funcToRun func(string, ...strin
 		}()
 	}
 
-	err = funcToRun(arg1, args...)
-
-	return err
+	return funcToRun(arg1, args...)
 }
