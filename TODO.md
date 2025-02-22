@@ -55,16 +55,7 @@ Store just the name of a saved file (junk the path), and do not store directory 
 
 ## Unzip Functions
 
-- [ ] [Freshen Entries](#freshen-entries-1)
 - [ ] [Junk Paths](#junk-paths-1)
-
-### Freshen Entries
-
-```text
--f
-
-freshen existing files, i.e., extract only those files that already exist on disk and that are newer than the disk copies. By default unzip queries before overwriting, but the -o option may be used to suppress the queries. Note that under many operating systems, the TZ (timezone) environment variable must be set correctly in order for -f and -u to work properly (under Unix the variable is usually set automatically). The reasons for this are somewhat subtle but have to do with the differences between DOS-format file times (always local time) and Unix-format times (always in GMT/UTC) and the necessity to compare the two. A typical TZ value is ''PST8PDT'' (US Pacific time with automatic adjustment for Daylight Savings Time or ''summer time'').
-```
 
 ### Junk Paths
 
@@ -73,3 +64,5 @@ freshen existing files, i.e., extract only those files that already exist on dis
 
 junk paths. The archive's directory structure is not recreated; all files are deposited in the extraction directory (by default, the current one).
 ```
+
+**TODO:** Check what happens if the same file name in two different directories error out or not when using junk
