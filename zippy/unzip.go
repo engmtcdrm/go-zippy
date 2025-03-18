@@ -22,17 +22,15 @@ type Unzippy struct {
 	Overwrite bool   // Overwrite specifies whether to overwrite files when extracting.
 }
 
+// NewUnzippy creates a new Unzippy instance.
+//
+// path is the path to the zip archive.
 func NewUnzippy(path string) *Unzippy {
 	return &Unzippy{
 		Path:      path,
 		Junk:      false,
 		Overwrite: false,
 	}
-}
-
-func (u *Unzippy) SetJunk(junk bool) *Unzippy {
-	u.Junk = junk
-	return u
 }
 
 // unzipFile extracts a single file from a zip archive.
