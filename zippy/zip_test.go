@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"example.com/m/zippy/testutils"
+	"github.com/engmtcdrm/zippy-tmp/zippy/testutils"
 )
 
 // func TestZipFile(t *testing.T) {

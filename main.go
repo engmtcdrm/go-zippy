@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"example.com/m/zippy"
-	"example.com/m/zippy/testutils"
 	pp "github.com/engmtcdrm/go-prettyprint"
+	"github.com/engmtcdrm/zippy-tmp/zippy"
+	"github.com/engmtcdrm/zippy-tmp/zippy/testutils"
 )
 
 var (
