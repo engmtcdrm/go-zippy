@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"archive/zip"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -122,31 +123,65 @@ func TestCreateZipFile(t *testing.T) {
 	}
 }
 
-// [ ] TODO: Add test for PermissionTest0Arg
-// [ ] TODO: Add test for PermissionTest1Arg
-
-func TestPermissionTest2Args(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-")
+func TestPermissionTest(t *testing.T) {
+	// Create a temporary file for testing
+	tempFile, err := os.CreateTemp("", "test-")
 	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
+		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer os.Remove(tempFile.Name())
 
-	testFilePath := filepath.Join(tempDir, "testfile.txt")
-	_, err = CreateTempFile(tempDir, "testfile-*.txt")
-	if err != nil {
-		t.Fatalf("CreateTempFile() error = %v", err)
+	tests := []struct {
+		name      string
+		funcToRun interface{}
+		args      []interface{}
+		wantErr   bool
+	}{
+		{
+			name:      "0-arg function",
+			funcToRun: func() error { return nil },
+			args:      []interface{}{},
+			wantErr:   false,
+		},
+		{
+			name:      "1-arg function",
+			funcToRun: func(arg1 string) error { return nil },
+			args:      []interface{}{tempFile.Name()},
+			wantErr:   false,
+		},
+		{
+			name:      "2-arg function",
+			funcToRun: func(arg1, arg2 string) error { return nil },
+			args:      []interface{}{tempFile.Name(), "arg2"},
+			wantErr:   false,
+		},
+		{
+			name: "variadic function",
+			funcToRun: func(args ...string) error {
+				if len(args) != 2 {
+					return errors.New("expected 2 arguments")
+				}
+				return nil
+			},
+			args:    []interface{}{tempFile.Name(), "arg2"},
+			wantErr: false,
+		},
+		{
+			name: "function with error",
+			funcToRun: func(args ...string) error {
+				return errors.New("test error")
+			},
+			args:    []interface{}{tempFile.Name(), "arg2"},
+			wantErr: true,
+		},
 	}
 
-	// Define a callback function that requires specific permissions
-	callback := func(arg1 string, arg2 string) error {
-		_, err := os.OpenFile(arg1, os.O_WRONLY, 0666)
-		return err
-	}
-
-	// Test with granted permissions
-	err = PermissionTest2Args(tempDir, callback, tempDir, testFilePath)
-	if err == nil {
-		t.Errorf("PermissionTest() did not produce an error as expected = %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := PermissionTest(tempFile.Name(), tt.funcToRun, tt.args...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PermissionTest() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

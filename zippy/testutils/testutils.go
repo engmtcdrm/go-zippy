@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 )
 
@@ -140,12 +141,14 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) error {
 	return err
 }
 
-// PermissionTest0Arg is a helper function to wrap another function that requires a file to have specific permissions.
+// PermissionTest is a helper function to wrap another function that requires a file to have specific permissions.
 //
 // filePermPath is the path to the file to change permissions on.
 //
 // funcToRun is the function to run that requires the file to have specific permissions.
-func PermissionTest0Arg(filePermPath string, funcToRun func() ([]*zip.File, error)) error {
+//
+// args are the arguments to pass to the function.
+func PermissionTest(filePermPath string, funcToRun interface{}, args ...interface{}) error {
 	var err error
 
 	if runtime.GOOS == "windows" {
@@ -166,131 +169,25 @@ func PermissionTest0Arg(filePermPath string, funcToRun func() ([]*zip.File, erro
 		}
 		defer func() {
 			// Restore permissions after the test
-			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
+			if restoreErr := os.Chmod(filePermPath, 0755); restoreErr != nil {
 				err = restoreErr
 			}
 		}()
 	}
 
-	_, err = funcToRun()
+	// Use reflection to call the target function with the provided arguments
+	funcValue := reflect.ValueOf(funcToRun)
+	funcArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		funcArgs[i] = reflect.ValueOf(arg)
+	}
+
+	results := funcValue.Call(funcArgs)
+
+	// Check if the function returned an error
+	if len(results) > 0 && !results[len(results)-1].IsNil() {
+		err = results[len(results)-1].Interface().(error)
+	}
 
 	return err
-}
-
-// PermissionTest1Arg is a helper function to wrap another function that requires a file to have specific permissions.
-//
-// filePermPath is the path to the file to change permissions on.
-//
-// funcToRun is the function to run that requires the file to have specific permissions.
-//
-// arg1 is the first argument to pass to the function.
-func PermissionTest1Arg(filePermPath string, funcToRun func(string) ([]*zip.File, error), arg1 string) error {
-	var err error
-
-	if runtime.GOOS == "windows" {
-		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-		if err := cmd.Run(); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-			if runError := cmd.Run(); runError != nil {
-				err = runError
-			}
-		}()
-	} else {
-		if err := os.Chmod(filePermPath, 0000); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
-				err = restoreErr
-			}
-		}()
-	}
-
-	_, err = funcToRun(arg1)
-
-	return err
-}
-
-// PermissionTest2Args is a helper function to wrap another function that requires a file to have specific permissions.
-//
-// filePermPath is the path to the file to change permissions on.
-//
-// funcToRun is the function to run that requires the file to have specific permissions.
-//
-// arg1 is the first argument to pass to the function.
-//
-// arg2 is the second argument to pass to the function.
-func PermissionTest2Args(filePermPath string, funcToRun func(string, string) error, arg1 string, arg2 string) error {
-	var err error
-
-	if runtime.GOOS == "windows" {
-		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-		if err := cmd.Run(); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-			if runError := cmd.Run(); runError != nil {
-				err = runError
-			}
-		}()
-	} else {
-		if err := os.Chmod(filePermPath, 0000); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
-				err = restoreErr
-			}
-		}()
-	}
-
-	return funcToRun(arg1, arg2)
-}
-
-// PermissionTestVariadic is a helper function to wrap another function that requires a file to have specific permissions.
-// This version supports a variadic argument for funcToRun.
-//
-// filePermPath is the path to the file to change permissions on.
-//
-// funcToRun is the function to run that requires the file to have specific permissions.
-//
-// arg1 is the first argument to pass to the function.
-//
-// args are the variadic arguments to pass to the function.
-func PermissionTestVariadic(filePermPath string, funcToRun func(string, ...string) error, arg1 string, args ...string) error {
-	var err error
-
-	if runtime.GOOS == "windows" {
-		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-		if err := cmd.Run(); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-			if runError := cmd.Run(); runError != nil {
-				err = runError
-			}
-		}()
-	} else {
-		if err := os.Chmod(filePermPath, 0000); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			if restoreErr := os.Chmod(filePermPath, 0755); err != nil {
-				err = restoreErr
-			}
-		}()
-	}
-
-	return funcToRun(arg1, args...)
 }
