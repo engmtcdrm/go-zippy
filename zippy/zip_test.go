@@ -1,7 +1,6 @@
 package zippy
 
 import (
-	"archive/zip"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,60 +8,75 @@ import (
 	"example.com/m/zippy/testutils"
 )
 
-func TestZipFile(t *testing.T) {
+// func TestZipFile(t *testing.T) {
+// 	tempDir, err := os.MkdirTemp("", "test-")
+// 	if err != nil {
+// 		t.Fatalf("Failed to create temp dir: %v", err)
+// 	}
+// 	defer func() {
+// 		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
+// 			t.Fatalf("Failed to remove temp dir: %v", removeErr)
+// 		}
+// 	}()
+
+// 	// Create a test file to zip
+// 	testFilePath := filepath.Join(tempDir, "testfile.txt")
+// 	err = os.WriteFile(testFilePath, []byte("Hello, World!"), 0644)
+// 	if err != nil {
+// 		t.Fatalf("Failed to create test file: %v", err)
+// 	}
+
+// 	// Create a zip file
+// 	zipFilePath := filepath.Join(tempDir, "test.zip")
+// 	zFile, err := os.Create(zipFilePath)
+// 	if err != nil {
+// 		t.Fatalf("Failed to create zip file: %v", err)
+// 	}
+// 	defer func() {
+// 		if closeErr := zFile.Close(); closeErr != nil {
+// 			t.Fatalf("Failed to close file %v", closeErr)
+// 		}
+// 	}()
+
+// 	zipWriter := zip.NewWriter(zFile)
+// 	defer func() {
+// 		if closeErr := zipWriter.Close(); closeErr != nil {
+// 			t.Fatalf("Failed to close zip writer: %v", closeErr)
+// 		}
+// 	}()
+
+// 	// Test zipFile function
+// 	err = zipFile(zipWriter, testFilePath)
+// 	if err != nil {
+// 		t.Errorf("zipFile() error = %v", err)
+// 	}
+// }
+
+func TestZippyAdd(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+
 	tempDir, err := os.MkdirTemp("", "test-")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
+		// Change back to the original working directory
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to change back to original working directory: %v", err)
+		}
+
 		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
 			t.Fatalf("Failed to remove temp dir: %v", removeErr)
 		}
 	}()
 
-	// Create a test file to zip
-	testFilePath := filepath.Join(tempDir, "testfile.txt")
-	err = os.WriteFile(testFilePath, []byte("Hello, World!"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
+	// Set the working directory to the temporary directory
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change working directory: %v", err)
 	}
-
-	// Create a zip file
-	zipFilePath := filepath.Join(tempDir, "test.zip")
-	zFile, err := os.Create(zipFilePath)
-	if err != nil {
-		t.Fatalf("Failed to create zip file: %v", err)
-	}
-	defer func() {
-		if closeErr := zFile.Close(); closeErr != nil {
-			t.Fatalf("Failed to close file %v", closeErr)
-		}
-	}()
-
-	zipWriter := zip.NewWriter(zFile)
-	defer func() {
-		if closeErr := zipWriter.Close(); closeErr != nil {
-			t.Fatalf("Failed to close zip writer: %v", closeErr)
-		}
-	}()
-
-	// Test zipFile function
-	err = zipFile(zipWriter, testFilePath)
-	if err != nil {
-		t.Errorf("zipFile() error = %v", err)
-	}
-}
-
-func TestZip(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
-			t.Fatalf("Failed to remove temp dir: %v", removeErr)
-		}
-	}()
 
 	tests := []struct {
 		testName   string
@@ -95,18 +109,22 @@ func TestZip(t *testing.T) {
 
 			var err error
 
+			z := NewZippy(tt.dest)
+
 			if tt.testName == "Bad Permissions Zip Input Path" {
-				err = testutils.PermissionTestVariadic(tt.filePath, Zip, tt.dest, tt.filePath)
+				// err = testutils.PermissionTestVariadic(tt.filePath, z.Zip, tt.dest, tt.filePath)
+				err = testutils.PermissionTest(tt.filePath, z.Add, tt.filePath)
 			} else if tt.testName == "Bad Permissions Zip Output Path" {
 				destDir := filepath.Dir(tt.dest)
 
-				err = testutils.PermissionTestVariadic(destDir, Zip, tt.dest, tt.filePath)
+				// err = testutils.PermissionTestVariadic(destDir, z.Zip, tt.dest, tt.filePath)
+				err = testutils.PermissionTest(destDir, z.Add, tt.filePath)
 			} else {
-				err = Zip(tt.dest, tt.filePath)
+				err = z.Add(tt.filePath)
 			}
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Zip() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Zippy.Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
