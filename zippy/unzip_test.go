@@ -106,10 +106,10 @@ func TestUnzip(t *testing.T) {
 			var err error
 
 			if tt.testName == "Bad Permissions Unzip Input Path" {
-				err = testutils.PermissionTest0Arg(tt.filePath, uz.Extract)
+				err = testutils.PermissionTest(tt.filePath, uz.Extract)
 			} else if tt.testName == "Bad Permissions Unzip Output Path" {
 				destDir := filepath.Dir(tt.dest)
-				err = testutils.PermissionTest1Arg(destDir, uz.ExtractTo, tt.dest)
+				err = testutils.PermissionTest(destDir, uz.ExtractTo, tt.dest)
 			} else {
 				_, err = uz.ExtractTo(tt.dest)
 			}
