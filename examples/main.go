@@ -1,16 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	pp "github.com/engmtcdrm/go-prettyprint"
-	"github.com/engmtcdrm/zippy-tmp/zippy"
-	"github.com/engmtcdrm/zippy-tmp/zippy/testutils"
+	"github.com/engmtcdrm/zippy-tmp"
+	"github.com/engmtcdrm/zippy-tmp/testutils"
 )
 
 var (
@@ -148,49 +146,6 @@ func main() {
 
 	if err := os.RemoveAll(*baseDir); err != nil {
 		panic(err)
-	}
-
-	testFiles := []string{
-		"t1",
-		"t2",
-		"testdir/",
-		"testdir/tt2",
-		"testdir/tt1",
-		"t1.txt",
-		"t2.txt",
-		"testdir/t2.txt",
-		"testdir/t1.txt",
-		"bubba/bubba/",
-		"bubba-123456.txt",
-		"bubba/",
-		"bubba/bubba/bubba-19023850.txt",
-		"bubba/bubba-1204023.txt",
-		"testdir2/",
-		"testdir2/bubba/",
-		"testdir2/bubba/bubba-190238591835.txt",
-	}
-
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter some text: ")
-	matchString, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("Error reading input:", err)
-		return
-	}
-
-	matchString = strings.ReplaceAll(matchString, "\r\n", "")
-
-	for _, testFile := range testFiles {
-		match, err := filepath.Match(matchString, testFile)
-		if err != nil {
-			panic(err)
-		}
-
-		if match {
-			fmt.Printf("Matched '%s' with '%s'\n", pp.Green(testFile), pp.Green(match))
-		} else {
-			fmt.Printf("Did not match '%s' with '%s'\n", pp.Red(testFile), pp.Red(match))
-		}
 	}
 
 	// Test absolute path
