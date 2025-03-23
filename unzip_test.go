@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/engmtcdrm/zippy-tmp/zippy/testutils"
+	"github.com/engmtcdrm/zippy-tmp/testutils"
 )
 
 func TestUnzipFile(t *testing.T) {
