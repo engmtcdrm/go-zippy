@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/engmtcdrm/zippy-tmp"
-	"github.com/engmtcdrm/zippy-tmp/testutils"
+	"github.com/engmtcdrm/go-zippy"
+	"github.com/engmtcdrm/go-zippy/testutils"
 )
 
 var (

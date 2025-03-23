@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/engmtcdrm/zippy-tmp"
+	"github.com/engmtcdrm/go-zippy"
 )
 
 func main() {

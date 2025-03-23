@@ -1,4 +1,4 @@
-module github.com/engmtcdrm/zippy-tmp
+module github.com/engmtcdrm/go-zippy
 
 go 1.23.0
 
