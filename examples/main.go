@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	pp "github.com/engmtcdrm/go-prettyprint"
 	"github.com/engmtcdrm/zippy-tmp"
 	"github.com/engmtcdrm/zippy-tmp/testutils"
 )

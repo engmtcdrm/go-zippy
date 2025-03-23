@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	pp "github.com/engmtcdrm/go-prettyprint"
 	"github.com/engmtcdrm/zippy-tmp"
 )
 
@@ -23,7 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("Contents of zip file (%s):\n\n", pp.Green(path))
+	fmt.Printf("Contents of zip file (%s):\n\n", path)
 
 	var fileCnt = 0
 
@@ -38,7 +37,7 @@ func main() {
 	for _, zFile := range zFiles {
 		// Use the pad variable to dynamically set the width for the filename
 		fmt.Printf("    %s%s\t%s\n",
-			pp.Green(zFile.Name),
+			zFile.Name,
 			strings.Repeat(" ", pad-len(zFile.Name)),
 			zFile.Modified.Format("2006-01-02 15:04:05"),
 		)
@@ -46,6 +45,6 @@ func main() {
 	}
 
 	fmt.Println("    -------")
-	fmt.Printf("    Total files: %s\n", pp.Green(fileCnt))
+	fmt.Printf("    Total files: %d\n", fileCnt)
 	fmt.Println()
 }
