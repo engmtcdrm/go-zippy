@@ -3,6 +3,7 @@ package testutils
 import (
 	"archive/zip"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,55 +89,84 @@ func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, error) {
 // subdirs is the number of subdirectories to create. The subdirectories will contain the same number
 // of files as the parent directory.
 func CreateZipFile(zipFilePath string, files int, subdirs int) error {
-	zFile, err := os.Create(zipFilePath)
+	// Step 1: Create a temporary directory to hold the files
+	tempDir, err := os.MkdirTemp("", "zip-temp-")
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := zFile.Close(); closeErr != nil {
-			err = closeErr
-		}
-	}()
+	defer os.RemoveAll(tempDir) // Clean up the temporary directory
 
-	zWrite := zip.NewWriter(zFile)
-	defer func() {
-		if closeErr := zWrite.Close(); closeErr != nil {
-			err = closeErr
-		}
-	}()
-
+	// Step 2: Create files and subdirectories in the temporary directory
 	for i := 0; i < files; i++ {
-		fWrite, err := zWrite.Create(fmt.Sprintf("test%d.txt", i))
-		if err != nil {
-			return err
-		}
-
-		_, err = fWrite.Write([]byte(fmt.Sprintf("Test File %d", i)))
-		if err != nil {
+		filePath := filepath.Join(tempDir, fmt.Sprintf("test%d.txt", i))
+		if err := os.WriteFile(filePath, []byte(fmt.Sprintf("Test File %d", i)), 0644); err != nil {
 			return err
 		}
 	}
 
 	for i := 0; i < subdirs; i++ {
-		subfolder := fmt.Sprintf("subfolder%d/", i)
-
-		_, err := zWrite.Create(subfolder)
-		if err != nil {
-			return nil
+		subfolderPath := filepath.Join(tempDir, fmt.Sprintf("subfolder%d", i))
+		if err := os.MkdirAll(subfolderPath, os.ModePerm); err != nil {
+			return err
 		}
 
 		for j := 0; j < files; j++ {
-			fileWriter, err := zWrite.Create(filepath.Join(subfolder, fmt.Sprintf("test%d.txt", j)))
-			if err != nil {
-				return err
-			}
-
-			_, err = fileWriter.Write([]byte(fmt.Sprintf("Test File %d", j)))
-			if err != nil {
+			filePath := filepath.Join(subfolderPath, fmt.Sprintf("test%d.txt", j))
+			if err := os.WriteFile(filePath, []byte(fmt.Sprintf("Test File %d", j)), 0644); err != nil {
 				return err
 			}
 		}
 	}
+
+	// Step 3: Create the zip file
+	zFile, err := os.Create(zipFilePath)
+	if err != nil {
+		return err
+	}
+	defer zFile.Close()
+
+	zWrite := zip.NewWriter(zFile)
+	defer zWrite.Close()
+
+	// Step 4: Walk through the temporary directory and add files to the zip archive
+	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip the root directory
+		if path == tempDir {
+			return nil
+		}
+
+		// Get the relative path to maintain the directory structure in the zip archive
+		relPath, err := filepath.Rel(tempDir, path)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			// Add a directory entry to the zip archive
+			_, err := zWrite.Create(relPath + "/")
+			return err
+		}
+
+		// Add a file entry to the zip archive
+		zipFile, err := zWrite.Create(relPath)
+		if err != nil {
+			return err
+		}
+
+		// Open the file and copy its contents to the zip archive
+		srcFile, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		_, err = io.Copy(zipFile, srcFile)
+		return err
+	})
 
 	return err
 }
