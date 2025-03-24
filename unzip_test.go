@@ -85,6 +85,19 @@ func TestUnzip(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			defer func() {
+				files, err := os.ReadDir(tempDir)
+				if err != nil {
+					t.Fatalf("Failed to read tempDir: %v", err)
+				}
+				for _, file := range files {
+					err := os.RemoveAll(filepath.Join(tempDir, file.Name()))
+					if err != nil {
+						t.Fatalf("Failed to remove file or directory in tempDir: %v", err)
+					}
+				}
+			}()
+
 			if tt.exists {
 				if err = testutils.CreateZipFile(tt.filePath, tt.files, tt.subfolders); err != nil {
 					t.Fatalf("Failed to create test zip file: %v", err)
