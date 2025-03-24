@@ -118,6 +118,12 @@ func (u *Unzippy) ExtractFiles(files ...string) ([]*zip.File, error) {
 // files to be extracted. If no files are specified, all files will be extracted.
 // Glob patterns are supported.
 func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, error) {
+	var err error
+
+	if err = os.MkdirAll(dest, os.ModePerm); err != nil {
+		return nil, err
+	}
+
 	zipReader, err := zip.OpenReader(u.Path)
 	if err != nil {
 		return nil, err
@@ -155,7 +161,7 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 		filePath := filepath.Join(dest, file.Name)
 
 		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(filePath, file.Mode()); err != nil {
+			if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
 				return nil, err
 			}
 		} else {
