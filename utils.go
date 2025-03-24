@@ -2,6 +2,7 @@ package zippy
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -16,6 +17,11 @@ import (
 // expected is the expected number of bytes.
 func validateCopy(path string, written int64, expected int64) error {
 	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(path)
 	if err != nil {
 		return err
 	}
