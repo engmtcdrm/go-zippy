@@ -1,0 +1,8 @@
+output: "{{.Dir}}/README.md"
+header: |-
+  [![Go](https://github.com/engmtcdrm/go-zippy/actions/workflows/test.yml/badge.svg)](https://github.com/engmtcdrm/go-zippy/actions/workflows/test.yml)
+  [![Release](https://img.shields.io/github/v/release/engmtcdrm/go-zippy.svg?label=Latest%20Release)](https://github.com/engmtcdrm/go-zippy/releases/latest)
+repository:
+  url: https://github.com/engmtcdrm/go-zippy
+  defaultBranch: master
+  path: /
