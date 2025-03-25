@@ -77,17 +77,17 @@ func testContents(z *zippy.Zippy) error {
 		return err
 	}
 
-	fmt.Printf("Contents of zip file (%s):\n\n", pp.Green(z.Path))
+	fmt.Printf("Contents of zip file (%s):\n\n", z.Path)
 
 	var fileCnt = 0
 
 	for _, zFile := range zFiles {
-		fmt.Printf("    %s\n", pp.Green(zFile.Name))
+		fmt.Printf("    %s\n", zFile.Name)
 		fileCnt++
 	}
 
 	fmt.Println("    -------")
-	fmt.Printf("    Total files: %s\n", pp.Green(fileCnt))
+	fmt.Printf("    Total files: %d\n", fileCnt)
 	fmt.Println()
 
 	return nil
@@ -135,12 +135,12 @@ func main() {
 	absZip = zippy.NewZippy(filepath.Join(absBasePath, "test.zip"))
 	relZip = zippy.NewZippy(filepath.Join(relBasePath, "test.zip"))
 
-	fmt.Println("Current working directory:", pp.Green(cwd))
-	fmt.Println("Base directory:", pp.Green(*baseDir))
-	fmt.Println("Absolute path zip directory:", pp.Green(absBasePath))
-	fmt.Println("Relative path zip directory:", pp.Green(relBasePath))
-	fmt.Println("Absolute path zip file:", pp.Green(absZip.Path))
-	fmt.Println("Relative path zip file:", pp.Green(relZip.Path))
+	fmt.Println("Current working directory:", cwd)
+	fmt.Println("Base directory:", *baseDir)
+	fmt.Println("Absolute path zip directory:", absBasePath)
+	fmt.Println("Relative path zip directory:", relBasePath)
+	fmt.Println("Absolute path zip file:", absZip.Path)
+	fmt.Println("Relative path zip file:", relZip.Path)
 	fmt.Println()
 
 	if err := os.RemoveAll(*baseDir); err != nil {
