@@ -207,7 +207,7 @@ func (z *Zippy) Delete(files ...string) (err error) {
 
 // Update updates files in a zip archive.
 func (z *Zippy) Update(files ...string) (err error) {
-	// Implementation of Update method
+	// TODO: Implementation of Update method
 	return err
 }
 
@@ -216,7 +216,7 @@ func (z *Zippy) Update(files ...string) (err error) {
 // dest is the new zip archive path.
 // files are the files to copy. If no files are provided, all files will be copied.
 func (z *Zippy) Copy(dest string, files ...string) (err error) {
-	// Implementation of Copy function
+	// TODO: Implementation of Copy function
 	return err
 }
 
