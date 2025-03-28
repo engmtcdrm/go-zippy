@@ -21,11 +21,10 @@ import "github.com/engmtcdrm/go-zippy"
 - [type UnzippyInterface](<#UnzippyInterface>)
 - [type Zippy](<#Zippy>)
   - [func NewZippy\(path string\) \*Zippy](<#NewZippy>)
-  - [func \(z \*Zippy\) Add\(files ...string\) error](<#Zippy.Add>)
-  - [func \(z \*Zippy\) Copy\(dest string, files ...string\) error](<#Zippy.Copy>)
-  - [func \(z \*Zippy\) Delete\(files ...string\) error](<#Zippy.Delete>)
-  - [func \(z \*Zippy\) Freshen\(\) error](<#Zippy.Freshen>)
-  - [func \(z \*Zippy\) Update\(files ...string\) error](<#Zippy.Update>)
+  - [func \(z \*Zippy\) Add\(files ...string\) \(err error\)](<#Zippy.Add>)
+  - [func \(z \*Zippy\) Copy\(dest string, files ...string\) \(err error\)](<#Zippy.Copy>)
+  - [func \(z \*Zippy\) Delete\(files ...string\) \(err error\)](<#Zippy.Delete>)
+  - [func \(z \*Zippy\) Update\(files ...string\) \(err error\)](<#Zippy.Update>)
 - [type ZippyInterface](<#ZippyInterface>)
 
 
@@ -123,7 +122,7 @@ type UnzippyInterface interface {
 ```
 
 <a name="Zippy"></a>
-## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L35-L41>)
+## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L32-L38>)
 
 
 
@@ -136,7 +135,7 @@ type Zippy struct {
 ```
 
 <a name="NewZippy"></a>
-### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L43>)
+### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L40>)
 
 ```go
 func NewZippy(path string) *Zippy
@@ -145,10 +144,10 @@ func NewZippy(path string) *Zippy
 
 
 <a name="Zippy.Add"></a>
-### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L54>)
+### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L53>)
 
 ```go
-func (z *Zippy) Add(files ...string) error
+func (z *Zippy) Add(files ...string) (err error)
 ```
 
 Add adds files or directories to a zip archive.
@@ -156,10 +155,10 @@ Add adds files or directories to a zip archive.
 files are the files or directories to archive. Glob patterns are supported.
 
 <a name="Zippy.Copy"></a>
-### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L216>)
+### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L218>)
 
 ```go
-func (z *Zippy) Copy(dest string, files ...string) error
+func (z *Zippy) Copy(dest string, files ...string) (err error)
 ```
 
 Copy copies files from existing zip archive to a new zip archive.
@@ -167,36 +166,27 @@ Copy copies files from existing zip archive to a new zip archive.
 dest is the new zip archive path. files are the files to copy. If no files are provided, all files will be copied.
 
 <a name="Zippy.Delete"></a>
-### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L126>)
+### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L125>)
 
 ```go
-func (z *Zippy) Delete(files ...string) error
+func (z *Zippy) Delete(files ...string) (err error)
 ```
 
 Delete deletes files or directories from an existing zip archive.
 
 files are the files or directories to delete. Glob patterns are supported.
 
-<a name="Zippy.Freshen"></a>
-### func \(\*Zippy\) [Freshen](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L207>)
-
-```go
-func (z *Zippy) Freshen() error
-```
-
-Freshen updates files in a zip archive if the source file is newer.
-
 <a name="Zippy.Update"></a>
-### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L201>)
+### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L209>)
 
 ```go
-func (z *Zippy) Update(files ...string) error
+func (z *Zippy) Update(files ...string) (err error)
 ```
 
 Update updates files in a zip archive.
 
 <a name="ZippyInterface"></a>
-## type [ZippyInterface](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L12-L33>)
+## type [ZippyInterface](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L12-L30>)
 
 ZippyInterface defines the methods for working with zip archives.
 
@@ -205,23 +195,20 @@ type ZippyInterface interface {
     // Add adds files or directories to a zip archive.
     //
     // files are the files or directories to archive. Glob patterns are supported.
-    Add(files ...string) error
+    Add(files ...string) (err error)
 
     // Delete deletes files or directories from an existing zip archive.
     //
     // files are the files or directories to delete. Glob patterns are supported.
-    Delete(files ...string) error
+    Delete(files ...string) (err error)
 
     // Update updates files in a zip archive.
     //
     // files are the files or directories to update.
-    Update(files ...string) error
-
-    // Freshen updates files in a zip archive if the source file is newer.
-    Freshen() error
+    Update(files ...string) (err error)
 
     // Copy copies files from a zip archive to a destination directory.
-    Copy(dest string, files ...string) error
+    Copy(dest string, files ...string) (err error)
 }
 ```
 
