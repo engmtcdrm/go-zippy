@@ -155,7 +155,7 @@ Adds files or directories to a zip archive.
 files are the files or directories to archive. Glob patterns are supported.
 
 <a name="Zippy.Copy"></a>
-### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L224>)
+### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L225>)
 
 ```go
 func (z *Zippy) Copy(dest string, files ...string) (err error)
@@ -163,7 +163,9 @@ func (z *Zippy) Copy(dest string, files ...string) (err error)
 
 Copies files from existing zip archive to a new zip archive.
 
-dest is the new zip archive path. files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
+dest is the new zip archive path.
+
+files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 
 <a name="Zippy.Delete"></a>
 ### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L129>)
