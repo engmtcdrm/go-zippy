@@ -1,56 +1,13 @@
 package zippy
 
 import (
+	"archive/zip"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/engmtcdrm/go-zippy/testutils"
 )
-
-// func TestZipFile(t *testing.T) {
-// 	tempDir, err := os.MkdirTemp("", "test-")
-// 	if err != nil {
-// 		t.Fatalf("Failed to create temp dir: %v", err)
-// 	}
-// 	defer func() {
-// 		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
-// 			t.Fatalf("Failed to remove temp dir: %v", removeErr)
-// 		}
-// 	}()
-
-// 	// Create a test file to zip
-// 	testFilePath := filepath.Join(tempDir, "testfile.txt")
-// 	err = os.WriteFile(testFilePath, []byte("Hello, World!"), 0644)
-// 	if err != nil {
-// 		t.Fatalf("Failed to create test file: %v", err)
-// 	}
-
-// 	// Create a zip file
-// 	zipFilePath := filepath.Join(tempDir, "test.zip")
-// 	zFile, err := os.Create(zipFilePath)
-// 	if err != nil {
-// 		t.Fatalf("Failed to create zip file: %v", err)
-// 	}
-// 	defer func() {
-// 		if closeErr := zFile.Close(); closeErr != nil {
-// 			t.Fatalf("Failed to close file %v", closeErr)
-// 		}
-// 	}()
-
-// 	zipWriter := zip.NewWriter(zFile)
-// 	defer func() {
-// 		if closeErr := zipWriter.Close(); closeErr != nil {
-// 			t.Fatalf("Failed to close zip writer: %v", closeErr)
-// 		}
-// 	}()
-
-// 	// Test zipFile function
-// 	err = zipFile(zipWriter, testFilePath)
-// 	if err != nil {
-// 		t.Errorf("zipFile() error = %v", err)
-// 	}
-// }
 
 func TestZippyAdd(t *testing.T) {
 	originalDir, err := os.Getwd()
@@ -125,6 +82,89 @@ func TestZippyAdd(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Zippy.Add() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestZippyDelete(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+
+	tempDir, err := os.MkdirTemp("", "test-")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		// Change back to the original working directory
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to change back to original working directory: %v", err)
+		}
+
+		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
+			t.Fatalf("Failed to remove temp dir: %v", removeErr)
+		}
+	}()
+
+	// Set the working directory to the temporary directory
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change working directory: %v", err)
+	}
+
+	tests := []struct {
+		testName   string
+		exists     bool
+		filePath   string
+		dest       string
+		files      int
+		subfolders int
+		deleteGlob string
+		wantErr    bool
+	}{
+		{"Delete 1 File", true, filepath.Join(tempDir, "test1"), filepath.Join(tempDir, "test1.zip"), 1, 0, "file0.txt", false},
+		{"Delete 10 Files", true, filepath.Join(tempDir, "test10"), filepath.Join(tempDir, "test10.zip"), 10, 0, "file*.txt", false},
+		{"Delete 1 Subdirectory", true, filepath.Join(tempDir, "test1sub"), filepath.Join(tempDir, "test1sub.zip"), 1, 1, "subdir0/", false},
+		{"Delete All Files and Subdirectories", true, filepath.Join(tempDir, "test10sub2"), filepath.Join(tempDir, "test10sub2.zip"), 10, 2, "*", false},
+		{"Delete from Nonexistent Zip", false, "nonexistent", filepath.Join(tempDir, "nonexistent.zip"), 0, 0, "*", true},
+		{"Delete from Empty Zip", true, filepath.Join(tempDir, "empty"), filepath.Join(tempDir, "empty.zip"), 0, 0, "*", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			if tt.exists {
+				if _, err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
+					t.Fatalf("Failed to create test files: %v", err)
+				}
+
+				z := NewZippy(tt.dest)
+				if err := z.Add(tt.filePath); err != nil {
+					t.Fatalf("Failed to add files to zip: %v", err)
+				}
+			}
+
+			z := NewZippy(tt.dest)
+			err := z.Delete(tt.deleteGlob)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Zippy.Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			// Verify the zip file contents if no error is expected
+			if !tt.wantErr {
+				z.zReadCloser, err = zip.OpenReader(tt.dest)
+				if err != nil {
+					t.Fatalf("Failed to open zip file: %v", err)
+				}
+				defer z.zReadCloser.Close()
+
+				for _, f := range z.zReadCloser.File {
+					match, _ := filepath.Match(tt.deleteGlob, f.Name)
+					if match {
+						t.Errorf("File %s was not deleted as expected", f.Name)
+					}
+				}
 			}
 		})
 	}
