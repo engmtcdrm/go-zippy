@@ -122,7 +122,7 @@ type UnzippyInterface interface {
 ```
 
 <a name="Zippy"></a>
-## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L32-L38>)
+## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L35-L41>)
 
 
 
@@ -135,7 +135,7 @@ type Zippy struct {
 ```
 
 <a name="NewZippy"></a>
-### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L40>)
+### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L43>)
 
 ```go
 func NewZippy(path string) *Zippy
@@ -144,70 +144,75 @@ func NewZippy(path string) *Zippy
 
 
 <a name="Zippy.Add"></a>
-### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L53>)
+### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L56>)
 
 ```go
 func (z *Zippy) Add(files ...string) (err error)
 ```
 
-Add adds files or directories to a zip archive.
+Adds files or directories to a zip archive.
 
 files are the files or directories to archive. Glob patterns are supported.
 
 <a name="Zippy.Copy"></a>
-### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L218>)
+### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L223>)
 
 ```go
 func (z *Zippy) Copy(dest string, files ...string) (err error)
 ```
 
-Copy copies files from existing zip archive to a new zip archive.
+Copies files from existing zip archive to a new zip archive.
 
-dest is the new zip archive path. files are the files to copy. If no files are provided, all files will be copied.
+dest is the new zip archive path. files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 
 <a name="Zippy.Delete"></a>
-### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L125>)
+### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L128>)
 
 ```go
 func (z *Zippy) Delete(files ...string) (err error)
 ```
 
-Delete deletes files or directories from an existing zip archive.
+Deletes files or directories from an existing zip archive.
 
 files are the files or directories to delete. Glob patterns are supported.
 
 <a name="Zippy.Update"></a>
-### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L209>)
+### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L214>)
 
 ```go
 func (z *Zippy) Update(files ...string) (err error)
 ```
 
-Update updates files in a zip archive.
+Updates files in a zip archive.
+
+files are the files or directories to update. Glob patterns are supported.
 
 <a name="ZippyInterface"></a>
-## type [ZippyInterface](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L12-L30>)
+## type [ZippyInterface](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L12-L33>)
 
 ZippyInterface defines the methods for working with zip archives.
 
 ```go
 type ZippyInterface interface {
-    // Add adds files or directories to a zip archive.
+    // Adds files or directories to a zip archive.
     //
     // files are the files or directories to archive. Glob patterns are supported.
     Add(files ...string) (err error)
 
-    // Delete deletes files or directories from an existing zip archive.
+    // Deletes files or directories from an existing zip archive.
     //
     // files are the files or directories to delete. Glob patterns are supported.
     Delete(files ...string) (err error)
 
-    // Update updates files in a zip archive.
+    // Updates files in a zip archive.
     //
-    // files are the files or directories to update.
+    // files are the files or directories to update. Glob patterns are supported.
     Update(files ...string) (err error)
 
-    // Copy copies files from a zip archive to a destination directory.
+    // Copies files from existing zip archive to a new zip archive.
+    //
+    // dest is the new zip archive path.
+    // files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
     Copy(dest string, files ...string) (err error)
 }
 ```

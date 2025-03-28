@@ -10,22 +10,25 @@ import (
 
 // ZippyInterface defines the methods for working with zip archives.
 type ZippyInterface interface {
-	// Add adds files or directories to a zip archive.
+	// Adds files or directories to a zip archive.
 	//
 	// files are the files or directories to archive. Glob patterns are supported.
 	Add(files ...string) (err error)
 
-	// Delete deletes files or directories from an existing zip archive.
+	// Deletes files or directories from an existing zip archive.
 	//
 	// files are the files or directories to delete. Glob patterns are supported.
 	Delete(files ...string) (err error)
 
-	// Update updates files in a zip archive.
+	// Updates files in a zip archive.
 	//
-	// files are the files or directories to update.
+	// files are the files or directories to update. Glob patterns are supported.
 	Update(files ...string) (err error)
 
-	// Copy copies files from a zip archive to a destination directory.
+	// Copies files from existing zip archive to a new zip archive.
+	//
+	// dest is the new zip archive path.
+	// files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 	Copy(dest string, files ...string) (err error)
 }
 
@@ -47,7 +50,7 @@ func NewZippy(path string) *Zippy {
 	}
 }
 
-// Add adds files or directories to a zip archive.
+// Adds files or directories to a zip archive.
 //
 // files are the files or directories to archive. Glob patterns are supported.
 func (z *Zippy) Add(files ...string) (err error) {
@@ -119,7 +122,7 @@ func (z *Zippy) Add(files ...string) (err error) {
 	return err
 }
 
-// Delete deletes files or directories from an existing zip archive.
+// Deletes files or directories from an existing zip archive.
 //
 // files are the files or directories to delete. Glob patterns are supported.
 func (z *Zippy) Delete(files ...string) (err error) {
@@ -205,22 +208,24 @@ func (z *Zippy) Delete(files ...string) (err error) {
 	return err
 }
 
-// Update updates files in a zip archive.
+// Updates files in a zip archive.
+//
+// files are the files or directories to update.  Glob patterns are supported.
 func (z *Zippy) Update(files ...string) (err error) {
 	// TODO: Implementation of Update method
 	return err
 }
 
-// Copy copies files from existing zip archive to a new zip archive.
+// Copies files from existing zip archive to a new zip archive.
 //
 // dest is the new zip archive path.
-// files are the files to copy. If no files are provided, all files will be copied.
+// files are the files to copy.  Glob patterns are supported. If no files are provided, all files will be copied.
 func (z *Zippy) Copy(dest string, files ...string) (err error) {
 	// TODO: Implementation of Copy function
 	return err
 }
 
-// copyZipFile copies a file from a zip archive to another zip archive.
+// Copies a file from a zip archive to another zip archive.
 //
 // file is the file to copy.
 func (z *Zippy) copyZipFile(file *zip.File) (err error) {
@@ -249,7 +254,7 @@ func (z *Zippy) copyZipFile(file *zip.File) (err error) {
 	return err
 }
 
-// copyZipFilesRemove copies files from a zip archive to another zip archive, removing files that match the given patterns.
+// Copies files from a zip archive to another zip archive, removing files that match the given patterns.
 //
 // files are the files to copy.
 //
@@ -281,7 +286,7 @@ func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns []string) error {
 	return nil
 }
 
-// zipFile adds a file or directory to a zip archive.
+// Adds a file or directory to a zip archive.
 //
 // path is the file or directory to add.
 func (z *Zippy) zipFile(path string) error {
@@ -345,7 +350,7 @@ func (z *Zippy) zipFile(path string) error {
 	return err
 }
 
-// zipFiles adds files or directories to a zip archive.
+// Adds files or directories to a zip archive.
 //
 // files are the files or directories to add. Glob patterns are supported.
 func (z *Zippy) zipFiles(files ...string) error {
