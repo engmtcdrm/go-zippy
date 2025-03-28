@@ -28,6 +28,7 @@ type ZippyInterface interface {
 	// Copies files from existing zip archive to a new zip archive.
 	//
 	// dest is the new zip archive path.
+	//
 	// files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 	Copy(dest string, files ...string) (err error)
 }

@@ -122,7 +122,7 @@ type UnzippyInterface interface {
 ```
 
 <a name="Zippy"></a>
-## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L35-L41>)
+## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L36-L42>)
 
 
 
@@ -135,7 +135,7 @@ type Zippy struct {
 ```
 
 <a name="NewZippy"></a>
-### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L43>)
+### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L44>)
 
 ```go
 func NewZippy(path string) *Zippy
@@ -144,7 +144,7 @@ func NewZippy(path string) *Zippy
 
 
 <a name="Zippy.Add"></a>
-### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L56>)
+### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L57>)
 
 ```go
 func (z *Zippy) Add(files ...string) (err error)
@@ -155,7 +155,7 @@ Adds files or directories to a zip archive.
 files are the files or directories to archive. Glob patterns are supported.
 
 <a name="Zippy.Copy"></a>
-### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L223>)
+### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L224>)
 
 ```go
 func (z *Zippy) Copy(dest string, files ...string) (err error)
@@ -166,7 +166,7 @@ Copies files from existing zip archive to a new zip archive.
 dest is the new zip archive path. files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 
 <a name="Zippy.Delete"></a>
-### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L128>)
+### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L129>)
 
 ```go
 func (z *Zippy) Delete(files ...string) (err error)
@@ -177,7 +177,7 @@ Deletes files or directories from an existing zip archive.
 files are the files or directories to delete. Glob patterns are supported.
 
 <a name="Zippy.Update"></a>
-### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L214>)
+### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L215>)
 
 ```go
 func (z *Zippy) Update(files ...string) (err error)
@@ -188,7 +188,7 @@ Updates files in a zip archive.
 files are the files or directories to update. Glob patterns are supported.
 
 <a name="ZippyInterface"></a>
-## type [ZippyInterface](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L12-L33>)
+## type [ZippyInterface](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L12-L34>)
 
 ZippyInterface defines the methods for working with zip archives.
 
@@ -212,6 +212,7 @@ type ZippyInterface interface {
     // Copies files from existing zip archive to a new zip archive.
     //
     // dest is the new zip archive path.
+    //
     // files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
     Copy(dest string, files ...string) (err error)
 }
