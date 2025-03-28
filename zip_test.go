@@ -169,3 +169,7 @@ func TestZippyDelete(t *testing.T) {
 		})
 	}
 }
+
+// TODO: Add Tests for Zippy.Update
+
+// TODO: Add Tests for Zippy.Copy
