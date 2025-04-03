@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// validateCopy validates the number of bytes written during a copy operation with
+// Validates the number of bytes written during a copy operation with
 // expected number of bytes.
 //
 // path is the path of the file that was copied.
@@ -33,14 +33,22 @@ func validateCopy(path string, written int64, expected int64) error {
 	return nil
 }
 
-// removeDriveLetter removes the drive letter and colon from a Windows path.
+// Removes the drive letter and colon from a Windows path.
 func removeDriveLetter(path string) string {
 	return strings.TrimPrefix(path, filepath.VolumeName(path))
 }
 
-// convertToZipPath removes the drive letter and colon from a Windows path and replaces
-// backslashes with forward slashes.
-func convertToZipPath(path string) string {
+// Converts a path to a zip-compatible path.
+func toZipPath(path string) string {
 	zipPath := removeDriveLetter(strings.ReplaceAll(path, string(filepath.Separator), "/"))
 	return strings.TrimPrefix(zipPath, "/")
+}
+
+// Converts paths to zip-compatible paths
+func toZipPaths(paths ...string) []string {
+	for i, file := range paths {
+		paths[i] = toZipPath(file)
+	}
+
+	return paths
 }
