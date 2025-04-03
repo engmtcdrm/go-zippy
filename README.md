@@ -122,20 +122,20 @@ type UnzippyInterface interface {
 ```
 
 <a name="Zippy"></a>
-## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L36-L42>)
+## type [Zippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L36-L43>)
 
 
 
 ```go
 type Zippy struct {
-    Path string // Path is the path to the zip archive.
-    Junk bool   // Junk specifies whether to junk the path when archiving.
+    Path string // The path, including the file name, to the zip archive.
+    Junk bool   // Specifies whether to junk the path when archiving.
     // contains filtered or unexported fields
 }
 ```
 
 <a name="NewZippy"></a>
-### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L44>)
+### func [NewZippy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L45>)
 
 ```go
 func NewZippy(path string) *Zippy
@@ -144,7 +144,7 @@ func NewZippy(path string) *Zippy
 
 
 <a name="Zippy.Add"></a>
-### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L57>)
+### func \(\*Zippy\) [Add](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L59>)
 
 ```go
 func (z *Zippy) Add(files ...string) (err error)
@@ -155,7 +155,7 @@ Adds files or directories to a zip archive.
 files are the files or directories to archive. Glob patterns are supported.
 
 <a name="Zippy.Copy"></a>
-### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L225>)
+### func \(\*Zippy\) [Copy](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L220>)
 
 ```go
 func (z *Zippy) Copy(dest string, files ...string) (err error)
@@ -168,7 +168,7 @@ dest is the new zip archive path.
 files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 
 <a name="Zippy.Delete"></a>
-### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L129>)
+### func \(\*Zippy\) [Delete](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L133>)
 
 ```go
 func (z *Zippy) Delete(files ...string) (err error)
@@ -179,7 +179,7 @@ Deletes files or directories from an existing zip archive.
 files are the files or directories to delete. Glob patterns are supported.
 
 <a name="Zippy.Update"></a>
-### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L215>)
+### func \(\*Zippy\) [Update](<https://github.com/engmtcdrm/go-zippy/blob/master/zip.go#L210>)
 
 ```go
 func (z *Zippy) Update(files ...string) (err error)
