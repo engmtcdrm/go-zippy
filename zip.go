@@ -53,174 +53,10 @@ func NewZippy(path string) *Zippy {
 	}
 }
 
-// Adds files or directories to a zip archive.
-//
-// files are the files or directories to archive. Glob patterns are supported.
-func (z *Zippy) Add(files ...string) (err error) {
-	if err := os.MkdirAll(filepath.Dir(z.Path), os.ModePerm); err != nil {
-		return err
-	}
-
-	var zipFile *os.File
-
-	_, err = os.Stat(z.Path)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	} else if os.IsNotExist(err) {
-		zipFile, err = os.Create(z.Path)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if closeErr := zipFile.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip file: %w", closeErr)
-			}
-		}()
-	} else {
-		zipFile, err = os.OpenFile(z.Path, os.O_RDWR|os.O_CREATE, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if closeErr := zipFile.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip file: %w", closeErr)
-			}
-		}()
-
-		z.zReadCloser, err = zip.OpenReader(z.Path)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		defer func() {
-			if closeErr := z.zReadCloser.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip reader: %w", closeErr)
-			}
-		}()
-	}
-
-	z.zWriter = zip.NewWriter(zipFile)
-	defer func() {
-		if closeErr := z.zWriter.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-		}
-	}()
-
-	// Copy existing files to the new zip archive if zip file exists
-	if err == nil && z.zReadCloser != nil {
-		z.existingFiles = make(map[string]*zip.File)
-
-		for _, f := range z.zReadCloser.File {
-			z.existingFiles[f.Name] = f
-		}
-
-		for _, f := range z.zReadCloser.File {
-			if err := z.zWriter.Copy(f); err != nil {
-				return err
-			}
-		}
-	}
-
-	if err := z.zipFiles(files...); err != nil {
-		return err
-	}
-
-	return err
-}
-
-// Deletes files or directories from an existing zip archive.
-//
-// files are the files or directories to delete. Glob patterns are supported.
-func (z *Zippy) Delete(files ...string) (err error) {
+func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPath string, err error) {
 	z.zReadCloser, err = zip.OpenReader(z.Path)
 	if err != nil {
-		return err
-	}
-	defer func() {
-		if z.zReadCloser != nil {
-			if closeErr := z.zReadCloser.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip reader: %w", closeErr)
-			}
-		}
-	}()
-
-	// Create a temporary zip file in the same directory as Zippy.Path
-	tempZipFile, err := os.CreateTemp(filepath.Dir(z.Path), z.tempFile)
-	if err != nil {
-		return fmt.Errorf("failed to create temporary zip file: %w", err)
-	}
-	defer func() {
-		if tempZipFile != nil {
-			if closeErr := tempZipFile.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close temporary zip file: %w", closeErr)
-			}
-		}
-	}()
-
-	tempZipPath := tempZipFile.Name()
-
-	z.zWriter = zip.NewWriter(tempZipFile)
-	defer func() {
-		if z.zWriter != nil {
-			if closeErr := z.zWriter.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-			}
-		}
-	}()
-
-	files = toZipPaths(files...)
-
-	// Copy existing files to the new zip archive, excluding the ones to delete
-	if err := z.copyZipFilesRemove(z.zReadCloser.File, files); err != nil {
-		return err
-	}
-
-	// Explicitly close resources before renaming the file
-	if z.zWriter != nil {
-		if closeErr := z.zWriter.Close(); closeErr != nil {
-			return fmt.Errorf("failed to close zip writer: %w", closeErr)
-		}
-		z.zWriter = nil
-	}
-
-	if tempZipFile != nil {
-		if closeErr := tempZipFile.Close(); closeErr != nil {
-			return fmt.Errorf("failed to close temporary zip file: %w", closeErr)
-		}
-		tempZipFile = nil
-	}
-
-	if z.zReadCloser != nil {
-		if closeErr := z.zReadCloser.Close(); closeErr != nil {
-			return fmt.Errorf("failed to close zip reader: %w", closeErr)
-		}
-		z.zReadCloser = nil
-	}
-
-	// Rename the temporary zip file to the original path
-	if err := os.Rename(tempZipPath, z.Path); err != nil {
-		return fmt.Errorf("failed to rename temporary zip file: %w", err)
-	}
-
-	return err
-}
-
-// Updates files in a zip archive.
-//
-// files are the files or directories to update.  Glob patterns are supported.
-func (z *Zippy) Update(files ...string) (err error) {
-	// TODO: Implementation of Update method
-	return err
-}
-
-// Copies files from existing zip archive to a new zip archive.
-//
-// dest is the new zip archive path.
-//
-// files are the files to copy.  Glob patterns are supported. If no files are provided, all files will be copied.
-func (z *Zippy) Copy(dest string, files ...string) (err error) {
-	z.zReadCloser, err = zip.OpenReader(z.Path)
-	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		if z.zReadCloser != nil {
@@ -231,50 +67,13 @@ func (z *Zippy) Copy(dest string, files ...string) (err error) {
 	}()
 
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
-		return err
-	}
-
-	// Copy entire zip file if no files are provided to copy
-	if files == nil {
-		if z.zReadCloser != nil {
-			if closeErr := z.zReadCloser.Close(); closeErr != nil {
-				return fmt.Errorf("failed to close zip reader: %w", closeErr)
-			}
-			z.zReadCloser = nil
-		}
-
-		fReader, err := os.Open(z.Path)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if closeErr := fReader.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-			}
-		}()
-
-		fWriter, err := os.Create(dest)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if closeErr := fWriter.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-			}
-		}()
-
-		_, err = io.Copy(fWriter, fReader)
-		if err != nil {
-			return err
-		}
-
-		return err
+		return "", err
 	}
 
 	// Create a temporary zip file in the same directory as Zippy.Path
 	tempZipFile, err := os.CreateTemp(filepath.Dir(dest), z.tempFile)
 	if err != nil {
-		return fmt.Errorf("failed to create temporary zip file: %w", err)
+		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
 	}
 	defer func() {
 		if tempZipFile != nil {
@@ -284,7 +83,42 @@ func (z *Zippy) Copy(dest string, files ...string) (err error) {
 		}
 	}()
 
-	tempZipPath := tempZipFile.Name()
+	// Copy entire zip file if no files are provided to copy
+	if files == nil {
+		if z.zReadCloser != nil {
+			if closeErr := z.zReadCloser.Close(); closeErr != nil {
+				return "", fmt.Errorf("failed to close zip reader: %w", closeErr)
+			}
+			z.zReadCloser = nil
+		}
+
+		fReader, err := os.Open(z.Path)
+		if err != nil {
+			return "", err
+		}
+		defer func() {
+			if closeErr := fReader.Close(); closeErr != nil {
+				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
+			}
+		}()
+
+		fWriter, err := os.Create(tempZipFile.Name())
+		if err != nil {
+			return "", err
+		}
+		defer func() {
+			if closeErr := fWriter.Close(); closeErr != nil {
+				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
+			}
+		}()
+
+		_, err = io.Copy(fWriter, fReader)
+		if err != nil {
+			return "", err
+		}
+
+		return tempZipFile.Name(), err
+	}
 
 	z.zWriter = zip.NewWriter(tempZipFile)
 	defer func() {
@@ -299,37 +133,54 @@ func (z *Zippy) Copy(dest string, files ...string) (err error) {
 
 	// Copy existing files to the new zip archive, excluding the ones to delete
 	if err := z.copyZipFilesKeep(z.zReadCloser.File, files); err != nil {
-		return err
+		return "", err
 	}
 
-	// Explicitly close resources before renaming the file
-	if z.zWriter != nil {
-		if closeErr := z.zWriter.Close(); closeErr != nil {
-			return fmt.Errorf("failed to close zip writer: %w", closeErr)
-		}
-		z.zWriter = nil
-	}
+	return tempZipFile.Name(), err
+}
 
-	if tempZipFile != nil {
-		if closeErr := tempZipFile.Close(); closeErr != nil {
-			return fmt.Errorf("failed to close temporary zip file: %w", closeErr)
-		}
-		tempZipFile = nil
+// Copy files from current zip to a temporary zip file removing any provided files listed
+//
+// files are the files or directories to delete. Glob patterns are supported.
+//
+// returns the path to the temporary zip file as well as any errors
+func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, err error) {
+	z.zReadCloser, err = zip.OpenReader(z.Path)
+	if err != nil {
+		return "", err
 	}
-
-	if z.zReadCloser != nil {
+	defer func() {
 		if closeErr := z.zReadCloser.Close(); closeErr != nil {
-			return fmt.Errorf("failed to close zip reader: %w", closeErr)
+			err = fmt.Errorf("failed to close zip reader: %w", closeErr)
 		}
-		z.zReadCloser = nil
+	}()
+
+	// Create a temporary zip file in the same directory as Zippy.Path
+	tempZipFile, err := os.CreateTemp(filepath.Dir(z.Path), z.tempFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
+	}
+	defer func() {
+		if closeErr := tempZipFile.Close(); closeErr != nil {
+			err = fmt.Errorf("failed to close temporary zip file: %w", closeErr)
+		}
+	}()
+
+	z.zWriter = zip.NewWriter(tempZipFile)
+	defer func() {
+		if closeErr := z.zWriter.Close(); closeErr != nil {
+			err = fmt.Errorf("failed to close zip writer: %w", closeErr)
+		}
+	}()
+
+	files = toZipPaths(files...)
+
+	// Copy existing files to the new zip archive, excluding the ones to delete
+	if err := z.copyZipFilesRemove(z.zReadCloser.File, files); err != nil {
+		return "", err
 	}
 
-	// Rename the temporary zip file to the destination path
-	if err := os.Rename(tempZipPath, dest); err != nil {
-		return fmt.Errorf("failed to rename temporary zip file: %w", err)
-	}
-
-	return err
+	return tempZipFile.Name(), err
 }
 
 // Copies files from a zip archive to another zip archive, removing files that match the given patterns.
@@ -502,4 +353,131 @@ func (z *Zippy) zipFiles(files ...string) error {
 	}
 
 	return nil
+}
+
+// Adds files or directories to a zip archive.
+//
+// files are the files or directories to archive. Glob patterns are supported.
+func (z *Zippy) Add(files ...string) (err error) {
+	if err := os.MkdirAll(filepath.Dir(z.Path), os.ModePerm); err != nil {
+		return err
+	}
+
+	var zipFile *os.File
+
+	_, err = os.Stat(z.Path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	} else if os.IsNotExist(err) {
+		zipFile, err = os.Create(z.Path)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if closeErr := zipFile.Close(); closeErr != nil {
+				err = fmt.Errorf("failed to close zip file: %w", closeErr)
+			}
+		}()
+	} else {
+		zipFile, err = os.OpenFile(z.Path, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if closeErr := zipFile.Close(); closeErr != nil {
+				err = fmt.Errorf("failed to close zip file: %w", closeErr)
+			}
+		}()
+
+		z.zReadCloser, err = zip.OpenReader(z.Path)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		defer func() {
+			if closeErr := z.zReadCloser.Close(); closeErr != nil {
+				err = fmt.Errorf("failed to close zip reader: %w", closeErr)
+			}
+		}()
+	}
+
+	z.zWriter = zip.NewWriter(zipFile)
+	defer func() {
+		if closeErr := z.zWriter.Close(); closeErr != nil {
+			err = fmt.Errorf("failed to close zip writer: %w", closeErr)
+		}
+	}()
+
+	// Copy existing files to the new zip archive if zip file exists
+	if err == nil && z.zReadCloser != nil {
+		z.existingFiles = make(map[string]*zip.File)
+
+		for _, f := range z.zReadCloser.File {
+			z.existingFiles[f.Name] = f
+		}
+
+		for _, f := range z.zReadCloser.File {
+			if err := z.zWriter.Copy(f); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := z.zipFiles(files...); err != nil {
+		return err
+	}
+
+	return err
+}
+
+// Deletes files or directories from an existing zip archive.
+//
+// files are the files or directories to delete. Glob patterns are supported.
+func (z *Zippy) Delete(files ...string) (err error) {
+	tempZipPath, err := z.createTempZipWithoutFiles(files...)
+	if err != nil {
+		// If the temp zip file was made, but we had an error happen after the fact
+		// lets clean it up if it exists
+		_, err = os.Stat(tempZipPath)
+		if err == nil {
+			if err := os.Remove(tempZipPath); err != nil {
+				return err
+			}
+		}
+
+		return err
+	}
+
+	// Rename the temporary zip file to the original path
+	if err := os.Rename(tempZipPath, z.Path); err != nil {
+		return fmt.Errorf("failed to rename temporary zip file: %w", err)
+	}
+
+	return err
+}
+
+// Updates files in a zip archive.
+//
+// files are the files or directories to update.  Glob patterns are supported.
+func (z *Zippy) Update(files ...string) (err error) {
+	// TODO: Implementation of Update method
+	return err
+}
+
+// Copies files from existing zip archive to a new zip archive.
+//
+// dest is the new zip archive path.
+//
+// files are the files to copy.  Glob patterns are supported. If no files are provided, all files will be copied.
+func (z *Zippy) Copy(dest string, files ...string) (err error) {
+	tempZipPath, err := z.createTempZipWithFiles(dest, files...)
+	if err != nil {
+		return err
+	}
+
+	// Rename the temporary zip file to the destination path
+	if err := os.Rename(tempZipPath, dest); err != nil {
+		return fmt.Errorf("failed to rename temporary zip file: %w", err)
+	}
+
+	return err
 }
