@@ -16,20 +16,26 @@ type UnzippyInterface interface {
 	ExtractFilesTo(dest string, files ...string) ([]*zip.File, error)
 }
 
+type UnzippyOptions struct {
+	Junk      bool // Junk specifies whether to junk the path of files when extracting.
+	Overwrite bool // Overwrite specifies whether to overwrite files when extracting.
+}
+
 type Unzippy struct {
-	Path      string // Path to the zip archive.
-	Junk      bool   // Junk specifies whether to junk the path of files when extracting.
-	Overwrite bool   // Overwrite specifies whether to overwrite files when extracting.
+	Path    string          // Path to the zip archive.
+	Options *UnzippyOptions // Options to use when extracting files.
 }
 
 // NewUnzippy creates a new Unzippy instance.
 //
 // path is the path to the zip archive.
-func NewUnzippy(path string) *Unzippy {
+func NewUnzippy(path string, options *UnzippyOptions) *Unzippy {
+	if options == nil {
+		options = &UnzippyOptions{}
+	}
 	return &Unzippy{
-		Path:      path,
-		Junk:      false,
-		Overwrite: false,
+		Path:    path,
+		Options: options,
 	}
 }
 
@@ -71,6 +77,9 @@ func (u *Unzippy) unzipFile(file *zip.File, filePath string) error {
 
 	hash := crc32.NewIEEE()
 
+	// Copy the zipped file to the output file and calculate the checksum
+	// using a TeeReader to read from the zipped file and write to the hash
+	// at the same time.
 	written, err := io.Copy(outFile, io.TeeReader(zippedFile, hash))
 	if err != nil {
 		return err
@@ -92,7 +101,7 @@ func (u *Unzippy) Extract() ([]*zip.File, error) {
 	return u.ExtractFiles()
 }
 
-// ExtractTo extracts all files from the zip archive to a destination directory.
+// Extracts all files from the zip archive to a destination directory.
 // The destination directory will be created if it does not exist.
 // The file modification times will be preserved.
 //
@@ -101,7 +110,7 @@ func (u *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
 	return u.ExtractFilesTo(dest)
 }
 
-// ExtractFiles extracts the specified files from the zip archive.
+// Extracts the specified files from the zip archive.
 //
 // files to be extracted. If no files are specified, all files will be extracted.
 // Glob patterns are supported.
@@ -109,7 +118,7 @@ func (u *Unzippy) ExtractFiles(files ...string) ([]*zip.File, error) {
 	return u.ExtractFilesTo(filepath.Dir(u.Path), files...)
 }
 
-// ExtractFilesTo extracts the specified files from the zip archive to a destination directory.
+// Extracts the specified files from the zip archive to a destination directory.
 // The destination directory will be created if it does not exist.
 // The file modification times will be preserved.
 //
@@ -154,7 +163,7 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 	}
 
 	for _, file := range extFiles {
-		if u.Junk {
+		if u.Options.Junk {
 			file.Name = filepath.Base(file.Name)
 		}
 

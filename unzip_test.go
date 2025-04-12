@@ -41,7 +41,7 @@ func TestUnzipFile(t *testing.T) {
 	}
 	defer zipReader.Close()
 
-	u := NewUnzippy(zipFile.Name())
+	u := NewUnzippy(zipFile.Name(), nil)
 
 	for _, file := range zipReader.File {
 		err := u.unzipFile(file, filepath.Join(tempDir, "test_output", file.Name))
@@ -114,7 +114,7 @@ func TestUnzip(t *testing.T) {
 				}()
 			}
 
-			uz := NewUnzippy(tt.filePath)
+			uz := NewUnzippy(tt.filePath, nil)
 
 			var err error
 

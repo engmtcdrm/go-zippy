@@ -52,7 +52,7 @@ func main() {
 
 	path := filepath.Join(cwd, "extract_to.zip")
 
-	uz := zippy.NewUnzippy(path)
+	uz := zippy.NewUnzippy(path, nil)
 
 	zFiles, err := uz.ExtractTo(tempDir)
 	if err != nil {
