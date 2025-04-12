@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ZippyInterface defines the methods for working with zip archives.
@@ -59,10 +60,11 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 		return "", err
 	}
 	defer func() {
-		if z.zReadCloser != nil {
-			if closeErr := z.zReadCloser.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip reader: %w", closeErr)
-			}
+		closeErr := z.zReadCloser.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close reader: %v", err, closeErr)
 		}
 	}()
 
@@ -76,56 +78,26 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
 	}
 	defer func() {
-		if tempZipFile != nil {
-			if closeErr := tempZipFile.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close temporary zip file: %w", closeErr)
-			}
+		closeErr := tempZipFile.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close temporary zip file: %v", err, closeErr)
 		}
 	}()
 
 	// Copy entire zip file if no files are provided to copy
 	if files == nil {
-		if z.zReadCloser != nil {
-			if closeErr := z.zReadCloser.Close(); closeErr != nil {
-				return "", fmt.Errorf("failed to close zip reader: %w", closeErr)
-			}
-			z.zReadCloser = nil
-		}
-
-		fReader, err := os.Open(z.Path)
-		if err != nil {
-			return "", err
-		}
-		defer func() {
-			if closeErr := fReader.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-			}
-		}()
-
-		fWriter, err := os.Create(tempZipFile.Name())
-		if err != nil {
-			return "", err
-		}
-		defer func() {
-			if closeErr := fWriter.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-			}
-		}()
-
-		_, err = io.Copy(fWriter, fReader)
-		if err != nil {
-			return "", err
-		}
-
-		return tempZipFile.Name(), err
+		return z.copyEntireZip(tempZipFile.Name())
 	}
 
 	z.zWriter = zip.NewWriter(tempZipFile)
 	defer func() {
-		if z.zWriter != nil {
-			if closeErr := z.zWriter.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip writer: %w", closeErr)
-			}
+		closeErr := z.zWriter.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close zip writer: %v", err, closeErr)
 		}
 	}()
 
@@ -150,8 +122,11 @@ func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, 
 		return "", err
 	}
 	defer func() {
-		if closeErr := z.zReadCloser.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zip reader: %w", closeErr)
+		closeErr := z.zReadCloser.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close zip reader: %v", err, closeErr)
 		}
 	}()
 
@@ -161,15 +136,21 @@ func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, 
 		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
 	}
 	defer func() {
-		if closeErr := tempZipFile.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close temporary zip file: %w", closeErr)
+		closeErr := tempZipFile.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close temporary zip file: %v", err, closeErr)
 		}
 	}()
 
 	z.zWriter = zip.NewWriter(tempZipFile)
 	defer func() {
-		if closeErr := z.zWriter.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zip writer: %w", closeErr)
+		closeErr := z.zWriter.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close zip writer: %v", err, closeErr)
 		}
 	}()
 
@@ -183,28 +164,155 @@ func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, 
 	return tempZipFile.Name(), err
 }
 
+// copyEntireZip creates a copy of the entire zip file
+//
+// tempZipPath is the path to the temporary zip file to create
+//
+// returns the path to the temporary zip file and any errors
+func (z *Zippy) copyEntireZip(tempZipPath string) (string, error) {
+	var err error
+
+	// Close any existing readers
+	if z.zReadCloser != nil {
+		closeErr := z.zReadCloser.Close()
+		if closeErr != nil {
+			return "", fmt.Errorf("failed to close zip reader: %w", closeErr)
+		}
+		z.zReadCloser = nil
+	}
+
+	fReader, err := os.Open(z.Path)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		closeErr := fReader.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close file reader: %v", err, closeErr)
+		}
+	}()
+
+	fWriter, err := os.Create(tempZipPath)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		closeErr := fWriter.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close file writer: %v", err, closeErr)
+		}
+	}()
+
+	_, err = io.Copy(fWriter, fReader)
+	if err != nil {
+		return "", err
+	}
+
+	return tempZipPath, err
+}
+
 // Copies files from a zip archive to another zip archive, removing files that match the given patterns.
 //
 // files are the files to copy.
 //
 // patterns are the patterns to match files to remove.
 func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns []string) error {
-	for _, file := range files {
-		shouldRemove := false
-		for _, fileToRemove := range patterns {
-			match, err := filepath.Match(fileToRemove, file.Name)
+	// First identify which files should be removed
+	filesToRemove := make(map[string]bool)
+	for _, pattern := range patterns {
+		for _, file := range files {
+			match, err := filepath.Match(pattern, file.Name)
 			if err != nil {
 				return err
 			}
 
 			if match {
-				shouldRemove = true
-				break
+				filesToRemove[file.Name] = true
 			}
 		}
+	}
 
-		if shouldRemove {
+	// Create a map to track directories and their contents
+	dirContents := make(map[string][]string)
+
+	// Group files by their parent directories
+	for _, file := range files {
+		if !filesToRemove[file.Name] {
+			// Use strings.Split/Join to get parent directory with forward slashes
+			parts := strings.Split(file.Name, "/")
+			if len(parts) > 1 {
+				dir := strings.Join(parts[:len(parts)-1], "/")
+				dirContents[dir] = append(dirContents[dir], file.Name)
+			}
+		}
+	}
+
+	// Identify empty directories that should be removed
+	emptyDirs := make(map[string]bool)
+
+	// Mark directories as empty if all their contents are marked for removal
+	// This is a recursive process that works bottom-up
+	changed := true
+	for changed {
+		changed = false
+		for dir, contents := range dirContents {
+			// Skip if already marked as empty
+			if emptyDirs[dir] {
+				continue
+			}
+
+			isEmpty := true
+			for _, content := range contents {
+				// If content is not marked for removal and is not an empty dir, dir is not empty
+				if !filesToRemove[content] && !emptyDirs[content] {
+					isEmpty = false
+					break
+				}
+			}
+
+			if isEmpty {
+				emptyDirs[dir] = true
+				changed = true
+
+				// Mark this directory for removal in its parent directory's context
+				// Use strings.Split/Join to get parent directory with forward slashes
+				parts := strings.Split(dir, "/")
+				if len(parts) > 1 {
+					parentDir := strings.Join(parts[:len(parts)-1], "/")
+					// Add this dir to its parent's contents list if not already there
+					found := false
+					for _, content := range dirContents[parentDir] {
+						if content == dir || content == dir+"/" {
+							found = true
+							break
+						}
+					}
+
+					if !found {
+						dirContents[parentDir] = append(dirContents[parentDir], dir)
+					}
+				}
+			}
+		}
+	}
+
+	// Copy files that should not be removed
+	for _, file := range files {
+		// Skip if file is marked for removal
+		if filesToRemove[file.Name] {
 			continue
+		}
+
+		// Skip if file is a directory that is marked as empty
+		if file.FileInfo().IsDir() {
+			dirName := strings.TrimSuffix(file.Name, "/")
+			if emptyDirs[dirName] {
+				continue
+			}
 		}
 
 		if err := z.zWriter.Copy(file); err != nil {
@@ -221,6 +329,11 @@ func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns []string) error {
 //
 // patterns are the patterns to match files to keep.
 func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns []string) error {
+	// Map to track directories that need to be included
+	dirsToInclude := make(map[string]bool)
+	filesToCopy := make(map[string]*zip.File)
+
+	// First pass: identify files to keep and their parent directories
 	for _, file := range files {
 		shouldKeep := false
 		for _, fileToKeep := range patterns {
@@ -235,12 +348,40 @@ func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns []string) error {
 			}
 		}
 
-		if !shouldKeep {
-			continue
-		}
+		if shouldKeep {
+			filesToCopy[file.Name] = file
 
-		if err := z.zWriter.Copy(file); err != nil {
-			return err
+			// Mark all parent directories for inclusion using ZIP paths
+			// Use strings.Split/Join instead of filepath.Dir to maintain forward slashes
+			parts := strings.Split(file.Name, "/")
+			for i := len(parts) - 1; i > 0; i-- {
+				dir := strings.Join(parts[:i], "/")
+				if dir != "" {
+					dirsToInclude[dir] = true
+				}
+			}
+		}
+	}
+
+	// Second pass: copy all directories first
+	for _, file := range files {
+		if file.FileInfo().IsDir() {
+			// If this is a directory that needs to be included
+			dirName := strings.TrimSuffix(file.Name, "/")
+			if dirsToInclude[dirName] {
+				if err := z.zWriter.Copy(file); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Third pass: copy all files
+	for _, file := range filesToCopy {
+		if !file.FileInfo().IsDir() {
+			if err := z.zWriter.Copy(file); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -292,8 +433,11 @@ func (z *Zippy) zipFile(path string) error {
 		return err
 	}
 	defer func() {
-		if closeErr := file.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close file: %w", closeErr)
+		closeErr := file.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close file: %v", err, closeErr)
 		}
 	}()
 
@@ -374,8 +518,11 @@ func (z *Zippy) Add(files ...string) (err error) {
 			return err
 		}
 		defer func() {
-			if closeErr := zipFile.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip file: %w", closeErr)
+			closeErr := zipFile.Close()
+			if err == nil {
+				err = closeErr
+			} else if closeErr != nil {
+				err = fmt.Errorf("primary error: %w, additionally failed to close zip file: %v", err, closeErr)
 			}
 		}()
 	} else {
@@ -384,8 +531,11 @@ func (z *Zippy) Add(files ...string) (err error) {
 			return err
 		}
 		defer func() {
-			if closeErr := zipFile.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip file: %w", closeErr)
+			closeErr := zipFile.Close()
+			if err == nil {
+				err = closeErr
+			} else if closeErr != nil {
+				err = fmt.Errorf("primary error: %w, additionally failed to close zip file: %v", err, closeErr)
 			}
 		}()
 
@@ -394,16 +544,24 @@ func (z *Zippy) Add(files ...string) (err error) {
 			return err
 		}
 		defer func() {
-			if closeErr := z.zReadCloser.Close(); closeErr != nil {
-				err = fmt.Errorf("failed to close zip reader: %w", closeErr)
+			if z.zReadCloser != nil {
+				closeErr := z.zReadCloser.Close()
+				if err == nil {
+					err = closeErr
+				} else if closeErr != nil {
+					err = fmt.Errorf("primary error: %w, additionally failed to close zip reader: %v", err, closeErr)
+				}
 			}
 		}()
 	}
 
 	z.zWriter = zip.NewWriter(zipFile)
 	defer func() {
-		if closeErr := z.zWriter.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zip writer: %w", closeErr)
+		closeErr := z.zWriter.Close()
+		if err == nil {
+			err = closeErr
+		} else if closeErr != nil {
+			err = fmt.Errorf("primary error: %w, additionally failed to close zip writer: %v", err, closeErr)
 		}
 	}()
 
