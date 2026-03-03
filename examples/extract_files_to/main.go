@@ -39,11 +39,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		if removeError := os.RemoveAll(tempDir); removeError != nil {
-			panic(fmt.Errorf("failed to remove temp dir: %w", removeError))
-		}
-	}()
+	defer os.RemoveAll(tempDir)
 
 	cwd, err := os.Getwd()
 	if err != nil {

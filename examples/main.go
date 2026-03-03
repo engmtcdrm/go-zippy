@@ -20,11 +20,7 @@ func testAbsZip() error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if removeError := os.RemoveAll(tempDir); removeError != nil {
-			err = fmt.Errorf("failed to remove temp dir: %w", removeError)
-		}
-	}()
+	defer os.RemoveAll(tempDir)
 
 	if _, err := testutils.CreateTestFiles(tempDir, 3, 2); err != nil {
 		return err

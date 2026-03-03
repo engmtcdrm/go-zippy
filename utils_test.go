@@ -11,11 +11,7 @@ func TestValidateCopy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer func() {
-		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
-			t.Fatalf("Failed to remove temp dir: %v", removeErr)
-		}
-	}()
+	defer os.RemoveAll(tempDir)
 
 	tests := []struct {
 		testName string

@@ -22,11 +22,7 @@ func CreateTempFile(dir, name string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if closeErr := tempFile.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zipped file: %w", closeErr)
-		}
-	}()
+	defer tempFile.Close()
 
 	_, err = tempFile.Write([]byte(filepath.Base(tempFile.Name())))
 	if err != nil {
@@ -197,12 +193,7 @@ func PermissionTest(filePermPath string, funcToRun interface{}, args ...interfac
 		if err := os.Chmod(filePermPath, 0000); err != nil {
 			return err
 		}
-		defer func() {
-			// Restore permissions after the test
-			if restoreErr := os.Chmod(filePermPath, 0755); restoreErr != nil {
-				err = restoreErr
-			}
-		}()
+		defer os.Chmod(filePermPath, 0755)
 	}
 
 	// Use reflection to call the target function with the provided arguments

@@ -59,14 +59,7 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		closeErr := z.zReadCloser.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close reader: %v", err, closeErr)
-		}
-	}()
+	defer z.zReadCloser.Close()
 
 	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
 		return "", err
@@ -77,14 +70,7 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
 	}
-	defer func() {
-		closeErr := tempZipFile.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close temporary zip file: %v", err, closeErr)
-		}
-	}()
+	defer tempZipFile.Close()
 
 	// Copy entire zip file if no files are provided to copy
 	if files == nil {
@@ -92,14 +78,7 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 	}
 
 	z.zWriter = zip.NewWriter(tempZipFile)
-	defer func() {
-		closeErr := z.zWriter.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close zip writer: %v", err, closeErr)
-		}
-	}()
+	defer z.zWriter.Close()
 
 	files = toZipPaths(files...)
 
@@ -121,38 +100,17 @@ func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, 
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		closeErr := z.zReadCloser.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close zip reader: %v", err, closeErr)
-		}
-	}()
+	defer z.zReadCloser.Close()
 
 	// Create a temporary zip file in the same directory as Zippy.Path
 	tempZipFile, err := os.CreateTemp(filepath.Dir(z.Path), z.tempFile)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
 	}
-	defer func() {
-		closeErr := tempZipFile.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close temporary zip file: %v", err, closeErr)
-		}
-	}()
+	defer tempZipFile.Close()
 
 	z.zWriter = zip.NewWriter(tempZipFile)
-	defer func() {
-		closeErr := z.zWriter.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close zip writer: %v", err, closeErr)
-		}
-	}()
+	defer z.zWriter.Close()
 
 	files = toZipPaths(files...)
 
@@ -185,27 +143,13 @@ func (z *Zippy) copyEntireZip(tempZipPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		closeErr := fReader.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close file reader: %v", err, closeErr)
-		}
-	}()
+	defer fReader.Close()
 
 	fWriter, err := os.Create(tempZipPath)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		closeErr := fWriter.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close file writer: %v", err, closeErr)
-		}
-	}()
+	defer fWriter.Close()
 
 	_, err = io.Copy(fWriter, fReader)
 	if err != nil {
@@ -432,14 +376,7 @@ func (z *Zippy) zipFile(path string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		closeErr := file.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close file: %v", err, closeErr)
-		}
-	}()
+	defer file.Close()
 
 	if header.FileInfo().IsDir() {
 		return nil
@@ -517,53 +454,23 @@ func (z *Zippy) Add(files ...string) (err error) {
 		if err != nil {
 			return err
 		}
-		defer func() {
-			closeErr := zipFile.Close()
-			if err == nil {
-				err = closeErr
-			} else if closeErr != nil {
-				err = fmt.Errorf("primary error: %w, additionally failed to close zip file: %v", err, closeErr)
-			}
-		}()
+		defer zipFile.Close()
 	} else {
 		zipFile, err = os.OpenFile(z.Path, os.O_RDWR|os.O_CREATE, os.ModePerm)
 		if err != nil {
 			return err
 		}
-		defer func() {
-			closeErr := zipFile.Close()
-			if err == nil {
-				err = closeErr
-			} else if closeErr != nil {
-				err = fmt.Errorf("primary error: %w, additionally failed to close zip file: %v", err, closeErr)
-			}
-		}()
+		defer zipFile.Close()
 
 		z.zReadCloser, err = zip.OpenReader(z.Path)
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		defer func() {
-			if z.zReadCloser != nil {
-				closeErr := z.zReadCloser.Close()
-				if err == nil {
-					err = closeErr
-				} else if closeErr != nil {
-					err = fmt.Errorf("primary error: %w, additionally failed to close zip reader: %v", err, closeErr)
-				}
-			}
-		}()
+		defer z.zReadCloser.Close()
 	}
 
 	z.zWriter = zip.NewWriter(zipFile)
-	defer func() {
-		closeErr := z.zWriter.Close()
-		if err == nil {
-			err = closeErr
-		} else if closeErr != nil {
-			err = fmt.Errorf("primary error: %w, additionally failed to close zip writer: %v", err, closeErr)
-		}
-	}()
+	defer z.zWriter.Close()
 
 	// Copy existing files to the new zip archive if zip file exists
 	if err == nil && z.zReadCloser != nil {
