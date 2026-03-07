@@ -27,14 +27,19 @@ type Unzippy struct {
 }
 
 // NewUnzippy creates a new Unzippy instance.
-func NewUnzippy(path string, options *UnzippyOptions) *Unzippy {
+func NewUnzippy(path string, options *UnzippyOptions) (*Unzippy, error) {
+	if path == "" {
+		return nil, ErrEmptyPath
+	}
+
 	if options == nil {
 		options = &UnzippyOptions{}
 	}
+
 	return &Unzippy{
 		Path:    path,
 		Options: options,
-	}
+	}, nil
 }
 
 // Extract all files from zip archive to the same directory as the archive.
