@@ -7,12 +7,6 @@ import (
 )
 
 func TestValidateCopy(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
 	tests := []struct {
 		testName string
 		filePath string
@@ -30,15 +24,15 @@ func TestValidateCopy(t *testing.T) {
 			pathToCheck := tt.filePath
 
 			if tt.filePath == "/valid/path" {
-				pathToCheck = filepath.Join(tempDir, "valid")
-				if err = os.WriteFile(pathToCheck, []byte("Test File"), 0644); err != nil {
+				pathToCheck = filepath.Join(t.TempDir(), "valid")
+				if err := os.WriteFile(pathToCheck, []byte("Test File"), 0644); err != nil {
 					t.Fatalf("Failed to create test file: %v", err)
 				}
 			}
 
 			err := validateCopy(pathToCheck, tt.written, tt.expected)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCopy() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("test '%s': validateCopy() error = %v, wantErr %v", tt.testName, err, tt.wantErr)
 			}
 		})
 	}
