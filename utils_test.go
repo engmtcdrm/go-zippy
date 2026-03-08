@@ -3,37 +3,71 @@ package zippy
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateCopy(t *testing.T) {
-	tests := []struct {
-		testName string
-		filePath string
-		written  int64
-		expected int64
-		wantErr  bool
-	}{
-		{"Valid Copy", "/valid/path", 100, 100, false},
-		{"Invalid Path", "/invalid/path\0001", 100, 100, true},
-		{"Mismatched Bytes", "/valid/path", 100, 200, true},
+// Tests for [removeDriveLetter] function.
+func Test_removeDriveLetter(t *testing.T) {
+	t.Run("valid Windows drive letter removal", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("Skipping Windows-specific test on non-Windows OS")
+		}
+
+		validPath := "C:\\windows"
+		expectedPath := "windows"
+
+		processedPath := removeDriveLetter(validPath)
+		assert.Equal(t, expectedPath, processedPath)
+	})
+
+	t.Run("valid non-Windows path", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping non-Windows-specific test on Windows OS")
+		}
+
+		validPath := "/usr/local"
+		expectedPath := "/usr/local"
+
+		processedPath := removeDriveLetter(validPath)
+		assert.Equal(t, expectedPath, processedPath)
+	})
+
+	t.Run("empty path", func(t *testing.T) {
+		processedPath := removeDriveLetter("")
+		assert.Equal(t, "", processedPath)
+	})
+}
+
+// Tests for [validateCopy] function.
+func Test_validateCopy(t *testing.T) {
+	makeValidFile := func(t *testing.T) string {
+		validPath := filepath.Join(t.TempDir(), "valid")
+		err := os.WriteFile(validPath, []byte("Test File"), os.ModePerm)
+		assert.NoError(t, err)
+
+		return validPath
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.testName, func(t *testing.T) {
-			pathToCheck := tt.filePath
+	t.Run("valid copy", func(t *testing.T) {
+		validPath := makeValidFile(t)
 
-			if tt.filePath == "/valid/path" {
-				pathToCheck = filepath.Join(t.TempDir(), "valid")
-				if err := os.WriteFile(pathToCheck, []byte("Test File"), 0644); err != nil {
-					t.Fatalf("Failed to create test file: %v", err)
-				}
-			}
+		err := validateCopy(validPath, 100, 100)
+		assert.NoError(t, err)
+	})
 
-			err := validateCopy(pathToCheck, tt.written, tt.expected)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("test '%s': validateCopy() error = %v, wantErr %v", tt.testName, err, tt.wantErr)
-			}
-		})
-	}
+	t.Run("invalid path", func(t *testing.T) {
+		invalidPath := "/invalid/path\0001"
+		err := validateCopy(invalidPath, 0, 0)
+		assert.Error(t, err)
+	})
+
+	t.Run("mismatched bytes", func(t *testing.T) {
+		validPath := makeValidFile(t)
+
+		err := validateCopy(validPath, 100, 200)
+		assert.Error(t, err)
+	})
 }
