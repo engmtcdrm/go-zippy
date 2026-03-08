@@ -68,9 +68,7 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 	}
 	defer zipReader.Close()
 
-	extFiles := zipReader.File
-
-	extFiles, err = filterFiles(zipReader.File, files...)
+	extFiles, err := filterFiles(zipReader.File, files...)
 	if err != nil {
 		return nil, err
 	}
