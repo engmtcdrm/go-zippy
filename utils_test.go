@@ -1,6 +1,7 @@
 package zippy
 
 import (
+	"archive/zip"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,6 +9,56 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+// Tests for [fileFound] function.
+func Test_fileFound(t *testing.T) {
+	zipFile := &zip.File{}
+	zipFile.Name = "test.txt"
+
+	t.Run("matching file found", func(t *testing.T) {
+		match, err := fileFound(zipFile, "test.txt")
+		assert.NoError(t, err)
+		assert.True(t, match)
+	})
+
+	t.Run("no matching file found", func(t *testing.T) {
+		match, err := fileFound(zipFile, "other.txt")
+		assert.NoError(t, err)
+		assert.False(t, match)
+	})
+
+	t.Run("bad glob pattern", func(t *testing.T) {
+		_, err := fileFound(zipFile, "[")
+		assert.Error(t, err)
+	})
+}
+
+// Tests for [filterFiles] function.
+func Test_filterFiles(t *testing.T) {
+	zipFile1 := &zip.File{}
+	zipFile1.Name = "test1.txt"
+	zipFile2 := &zip.File{}
+	zipFile2.Name = "test2.txt"
+	zipFiles := []*zip.File{zipFile1, zipFile2}
+
+	t.Run("filter with matching files", func(t *testing.T) {
+		filteredFiles, err := filterFiles(zipFiles, "test1.txt")
+		assert.NoError(t, err)
+		assert.Len(t, filteredFiles, 1)
+		assert.Equal(t, "test1.txt", filteredFiles[0].Name)
+	})
+
+	t.Run("zipFiles is nil", func(t *testing.T) {
+		filteredFiles, err := filterFiles(nil, "test1.txt")
+		assert.NoError(t, err)
+		assert.Nil(t, filteredFiles)
+	})
+
+	t.Run("bad glob pattern", func(t *testing.T) {
+		_, err := filterFiles(zipFiles, "[")
+		assert.Error(t, err)
+	})
+}
 
 // Tests for [removeDriveLetter] function.
 func Test_removeDriveLetter(t *testing.T) {
