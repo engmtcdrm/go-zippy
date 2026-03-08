@@ -1,11 +1,56 @@
 package zippy
 
 import (
+	"archive/zip"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// fileFound checks if a zip file matches any of the provided glob patterns.
+func fileFound(zipFile *zip.File, files ...string) (bool, error) {
+	for _, f := range files {
+		match, err := filepath.Match(f, zipFile.Name)
+		if err != nil {
+			return false, err
+		}
+
+		if match {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// filterFiles filters the zip files based on the provided glob patterns. If no
+// patterns are provided, all files are returned.
+func filterFiles(zipFiles []*zip.File, files ...string) ([]*zip.File, error) {
+	if zipFiles == nil {
+		return nil, nil
+	}
+
+	// If we have files to extract, filter the files to extract
+	if files == nil {
+		return zipFiles, nil
+	}
+
+	extFiles := []*zip.File{}
+	for _, file := range zipFiles {
+		match, err := fileFound(file, files...)
+		if err != nil {
+			return nil, err
+		}
+
+		if match {
+			extFiles = append(extFiles, file)
+			continue
+		}
+	}
+
+	return extFiles, nil
+}
 
 // Removes the drive letter and colon from a Windows path.
 func removeDriveLetter(path string) string {

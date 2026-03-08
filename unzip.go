@@ -70,7 +70,7 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 
 	extFiles := zipReader.File
 
-	extFiles, err = u.filterFiles(zipReader, files...)
+	extFiles, err = filterFiles(zipReader.File, files...)
 	if err != nil {
 		return nil, err
 	}
@@ -87,31 +87,6 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 // The file modification times will be preserved.
 func (u *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
 	return u.ExtractFilesTo(dest)
-}
-
-// filterFiles filters the files in the zip archive based on the specified files
-// to extract.
-func (u *Unzippy) filterFiles(zipReader *zip.ReadCloser, files ...string) ([]*zip.File, error) {
-	// If we have files to extract, filter the files to extract
-	if files == nil {
-		return zipReader.File, nil
-	}
-
-	extFiles := []*zip.File{}
-	for _, file := range zipReader.File {
-		for _, f := range files {
-			match, err := filepath.Match(f, file.Name)
-			if err != nil {
-				return nil, err
-			}
-
-			if match {
-				extFiles = append(extFiles, file)
-			}
-		}
-	}
-
-	return extFiles, nil
 }
 
 // unzipFile extracts a single file from a zip archive.
