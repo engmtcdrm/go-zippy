@@ -42,7 +42,10 @@ func main() {
 
 	path := filepath.Join(cwd, "extract_files.zip")
 
-	uz := zippy.NewUnzippy(path, nil)
+	uz, err := zippy.NewUnzippy(path, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	zFiles, err := uz.ExtractFiles("f1", "d2/", "d2/d1/d2/f1")
 	if err != nil {

@@ -48,7 +48,10 @@ func main() {
 
 	path := filepath.Join(cwd, "extract_to.zip")
 
-	uz := zippy.NewUnzippy(path, nil)
+	uz, err := zippy.NewUnzippy(path, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	zFiles, err := uz.ExtractTo(tempDir)
 	if err != nil {
