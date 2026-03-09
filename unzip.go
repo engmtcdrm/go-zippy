@@ -87,6 +87,31 @@ func (u *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
 	return u.ExtractFilesTo(dest)
 }
 
+// copyAndValidate copies the contents of a zipped file to the output file and
+// validates the copy by checking the CRC32 checksum and the number of bytes
+// written.
+func (u *Unzippy) copyAndValidate(zippedFileReader io.Reader, zipFile *zip.File, dest string, destFile *os.File) error {
+	hash := crc32.NewIEEE()
+
+	// Copy the zipped file to the output file and calculate the checksum
+	// using a TeeReader to read from the zipped file and write to the hash
+	// at the same time.
+	written, err := io.Copy(destFile, io.TeeReader(zippedFileReader, hash))
+	if err != nil {
+		return err
+	}
+
+	checksum := hash.Sum32()
+
+	// Verify the checksum of the extracted file against the expected checksum
+	// from the zip file.
+	if checksum != zipFile.CRC32 {
+		return fmt.Errorf("failed to copy '%s': expected '%08x' checksum, got '%08x' checksum", dest, zipFile.CRC32, checksum)
+	}
+
+	return validateCopy(dest, written, int64(zipFile.UncompressedSize64))
+}
+
 // unzipFile extracts a single file from a zip archive.
 func (u *Unzippy) unzipFile(zipFile *zip.File, dest string) error {
 	zippedFile, err := zipFile.Open()
@@ -101,31 +126,13 @@ func (u *Unzippy) unzipFile(zipFile *zip.File, dest string) error {
 		return err
 	}
 
-	outFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipFile.Mode())
+	destFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipFile.Mode())
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer destFile.Close()
 
-	hash := crc32.NewIEEE()
-
-	// Copy the zipped file to the output file and calculate the checksum
-	// using a TeeReader to read from the zipped file and write to the hash
-	// at the same time.
-	written, err := io.Copy(outFile, io.TeeReader(zippedFile, hash))
-	if err != nil {
-		return err
-	}
-
-	checksum := hash.Sum32()
-
-	// Verify the checksum of the extracted file against the expected checksum
-	// from the zip file.
-	if checksum != zipFile.CRC32 {
-		return fmt.Errorf("failed to copy '%s': expected '%08x' checksum, got '%08x' checksum", dest, zipFile.CRC32, checksum)
-	}
-
-	return validateCopy(dest, written, int64(zipFile.UncompressedSize64))
+	return u.copyAndValidate(zippedFile, zipFile, dest, destFile)
 }
 
 // unzipFiles extracts the specified files from the zip archive to a destination
