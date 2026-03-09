@@ -6,47 +6,32 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateTempFile(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
-	_, err = CreateTempFile(tempDir, "testfile-*.txt")
-	if err != nil {
-		t.Fatalf("CreateTempFile() error = %v", err)
-	}
+	_, err := CreateTempFile(tempDir, "testfile-*.txt")
+	assert.NoError(t, err)
 
 	// Check if the file was created
 	files, err := os.ReadDir(tempDir)
-	if err != nil {
-		t.Fatalf("Failed to read temp dir: %v", err)
-	}
+	assert.NoError(t, err)
 
-	if len(files) != 1 {
-		t.Errorf("Expected 1 file, got %d", len(files))
-	}
+	assert.Len(t, files, 1)
 }
 
 func TestCreateTestFiles(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
-	if _, err = CreateTestFiles(tempDir, 3, 2); err != nil {
-		t.Fatalf("CreateTestFiles() error = %v", err)
-	}
+	_, err := CreateTestFiles(tempDir, 3, 2)
+	assert.NoError(t, err)
 
 	// Check if the files and subdirectories were created
 	files, err := os.ReadDir(tempDir)
-	if err != nil {
-		t.Fatalf("Failed to read temp dir: %v", err)
-	}
+	assert.NoError(t, err)
 
 	expectedFiles := 3
 	expectedDirs := 2
@@ -57,48 +42,31 @@ func TestCreateTestFiles(t *testing.T) {
 		if file.IsDir() {
 			actualDirs++
 			subFiles, err := os.ReadDir(filepath.Join(tempDir, file.Name()))
-			if err != nil {
-				t.Fatalf("Failed to read subdir: %v", err)
-			}
+			assert.NoError(t, err)
 			actualFiles += len(subFiles)
 		} else {
 			actualFiles++
 		}
 	}
 
-	if actualFiles != expectedFiles+expectedFiles*expectedDirs {
-		t.Errorf("Expected %d files, got %d", expectedFiles+expectedFiles*expectedDirs, actualFiles)
-	}
-
-	if actualDirs != expectedDirs {
-		t.Errorf("Expected %d directories, got %d", expectedDirs, actualDirs)
-	}
+	assert.Equal(t, expectedFiles+expectedFiles*expectedDirs, actualFiles)
+	assert.Equal(t, expectedDirs, actualDirs)
 }
 
 func TestCreateZipFile(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	zipFilePath := filepath.Join(tempDir, "test.zip")
-	err = CreateZipFile(zipFilePath, 3, 2)
-	if err != nil {
-		t.Fatalf("CreateZipFile() error = %v", err)
-	}
+
+	err := CreateZipFile(zipFilePath, 3, 2)
+	assert.NoError(t, err)
 
 	// Check if the zip file was created
 	_, err = os.Stat(zipFilePath)
-	if os.IsNotExist(err) {
-		t.Fatalf("Expected zip file %s does not exist", zipFilePath)
-	}
+	assert.NoError(t, err)
 
 	// Check the contents of the zip file
 	zFile, err := zip.OpenReader(zipFilePath)
-	if err != nil {
-		t.Fatalf("Failed to open zip file: %v", err)
-	}
+	assert.NoError(t, err)
 	defer zFile.Close()
 
 	expectedFiles := 3
@@ -114,13 +82,8 @@ func TestCreateZipFile(t *testing.T) {
 		}
 	}
 
-	if actualFiles != expectedFiles+expectedFiles*expectedDirs {
-		t.Errorf("Expected %d files, got %d", expectedFiles+expectedFiles*expectedDirs, actualFiles)
-	}
-
-	if actualDirs != expectedDirs {
-		t.Errorf("Expected %d directories, got %d", expectedDirs, actualDirs)
-	}
+	assert.Equal(t, expectedFiles+expectedFiles*expectedDirs, actualFiles)
+	assert.Equal(t, expectedDirs, actualDirs)
 }
 
 func TestPermissionTest(t *testing.T) {
