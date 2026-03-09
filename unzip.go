@@ -11,9 +11,9 @@ import (
 
 type UnzippyInterface interface {
 	Extract() ([]*zip.File, error)
-	ExtractTo(dest string) ([]*zip.File, error)
 	ExtractFiles(files ...string) ([]*zip.File, error)
 	ExtractFilesTo(dest string, files ...string) ([]*zip.File, error)
+	ExtractTo(dest string) ([]*zip.File, error)
 }
 
 type UnzippyOptions struct {
@@ -27,73 +27,19 @@ type Unzippy struct {
 }
 
 // NewUnzippy creates a new Unzippy instance.
-//
-// path is the path to the zip archive.
-func NewUnzippy(path string, options *UnzippyOptions) *Unzippy {
+func NewUnzippy(path string, options *UnzippyOptions) (*Unzippy, error) {
+	if path == "" {
+		return nil, ErrEmptyPath
+	}
+
 	if options == nil {
 		options = &UnzippyOptions{}
 	}
+
 	return &Unzippy{
 		Path:    path,
 		Options: options,
-	}
-}
-
-// unzipFile extracts a single file from a zip archive.
-// The file is extracted to the specified path. The file
-// is validated using the CRC32 checksum and the size
-// of the extracted file is validated against the expected
-// size.
-//
-// file is the file to extract.
-//
-// filePath is the path to extract the file to.
-func (u *Unzippy) unzipFile(file *zip.File, filePath string) error {
-	zippedFile, err := file.Open()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := zippedFile.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zipped file: %w", closeErr)
-		}
-	}()
-
-	// Ensure the directory for the inflated file exists
-	fileDir := filepath.Dir(filePath)
-	if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
-		return err
-	}
-
-	outFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := outFile.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close file: %w", closeErr)
-		}
-	}()
-
-	hash := crc32.NewIEEE()
-
-	// Copy the zipped file to the output file and calculate the checksum
-	// using a TeeReader to read from the zipped file and write to the hash
-	// at the same time.
-	written, err := io.Copy(outFile, io.TeeReader(zippedFile, hash))
-	if err != nil {
-		return err
-	}
-
-	checksum := hash.Sum32()
-
-	if checksum != file.CRC32 {
-		return fmt.Errorf("failed to copy '%s': expected '%08x' checksum, got '%08x' checksum", filePath, file.CRC32, checksum)
-	}
-
-	err = validateCopy(filePath, written, int64(file.UncompressedSize64))
-
-	return err
+	}, nil
 }
 
 // Extract all files from zip archive to the same directory as the archive.
@@ -101,35 +47,18 @@ func (u *Unzippy) Extract() ([]*zip.File, error) {
 	return u.ExtractFiles()
 }
 
-// Extracts all files from the zip archive to a destination directory.
-// The destination directory will be created if it does not exist.
-// The file modification times will be preserved.
-//
-// dest is the destination directory.
-func (u *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
-	return u.ExtractFilesTo(dest)
-}
-
-// Extracts the specified files from the zip archive.
-//
-// files to be extracted. If no files are specified, all files will be extracted.
-// Glob patterns are supported.
+// Extracts the specified files from the zip archive. If no files are specified,
+// all files will be extracted. Glob patterns are supported.
 func (u *Unzippy) ExtractFiles(files ...string) ([]*zip.File, error) {
 	return u.ExtractFilesTo(filepath.Dir(u.Path), files...)
 }
 
 // Extracts the specified files from the zip archive to a destination directory.
 // The destination directory will be created if it does not exist.
-// The file modification times will be preserved.
-//
-// dest is the destination directory.
-//
-// files to be extracted. If no files are specified, all files will be extracted.
-// Glob patterns are supported.
+// The file modification times will be preserved. If no files are specified, all
+// files will be extracted. Glob patterns are supported.
 func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, error) {
-	var err error
-
-	if err = os.MkdirAll(dest, os.ModePerm); err != nil {
+	if err := os.MkdirAll(dest, os.ModePerm); err != nil {
 		return nil, err
 	}
 
@@ -137,32 +66,79 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if closeErr := zipReader.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zip file: %w", closeErr)
-		}
-	}()
+	defer zipReader.Close()
 
-	extFiles := zipReader.File
-
-	// If we have files to extract, filter the files to extract
-	if files != nil {
-		extFiles = []*zip.File{}
-		for _, file := range zipReader.File {
-			for _, f := range files {
-				match, err := filepath.Match(f, file.Name)
-				if err != nil {
-					return nil, err
-				}
-
-				if match {
-					extFiles = append(extFiles, file)
-				}
-			}
-		}
+	extFiles, err := filterFiles(zipReader.File, files...)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, file := range extFiles {
+	if err := u.unzipFiles(dest, extFiles...); err != nil {
+		return nil, err
+	}
+
+	return extFiles, nil
+}
+
+// Extracts all files from the zip archive to a destination directory.
+// The destination directory will be created if it does not exist.
+// The file modification times will be preserved.
+func (u *Unzippy) ExtractTo(dest string) ([]*zip.File, error) {
+	return u.ExtractFilesTo(dest)
+}
+
+// copyAndValidate copies the contents of a zipped file to the output file and
+// validates the copy by checking the CRC32 checksum and the number of bytes
+// written.
+func (u *Unzippy) copyAndValidate(zippedFileReader io.Reader, zipFile *zip.File, dest string, destFile *os.File) error {
+	hash := crc32.NewIEEE()
+
+	// Copy the zipped file to the output file and calculate the checksum
+	// using a TeeReader to read from the zipped file and write to the hash
+	// at the same time.
+	written, err := io.Copy(destFile, io.TeeReader(zippedFileReader, hash))
+	if err != nil {
+		return err
+	}
+
+	checksum := hash.Sum32()
+
+	// Verify the checksum of the extracted file against the expected checksum
+	// from the zip file.
+	if checksum != zipFile.CRC32 {
+		return fmt.Errorf("failed to copy '%s': expected '%08x' checksum, got '%08x' checksum", dest, zipFile.CRC32, checksum)
+	}
+
+	return validateCopy(dest, written, int64(zipFile.UncompressedSize64))
+}
+
+// unzipFile extracts a single file from a zip archive.
+func (u *Unzippy) unzipFile(zipFile *zip.File, dest string) error {
+	zippedFile, err := zipFile.Open()
+	if err != nil {
+		return err
+	}
+	defer zippedFile.Close()
+
+	// Ensure the directory for the inflated file exists
+	fileDir := filepath.Dir(dest)
+	if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
+		return err
+	}
+
+	destFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipFile.Mode())
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	return u.copyAndValidate(zippedFile, zipFile, dest, destFile)
+}
+
+// unzipFiles extracts the specified files from the zip archive to a destination
+// directory.
+func (u *Unzippy) unzipFiles(dest string, files ...*zip.File) error {
+	for _, file := range files {
 		if u.Options.Junk {
 			file.Name = filepath.Base(file.Name)
 		}
@@ -171,19 +147,19 @@ func (u *Unzippy) ExtractFilesTo(dest string, files ...string) ([]*zip.File, err
 
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
-				return nil, err
+				return err
 			}
 		} else {
 			if err := u.unzipFile(file, filePath); err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		// Preserve the file modification date
 		if err := os.Chtimes(filePath, file.Modified, file.Modified); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return extFiles, err
+	return nil
 }

@@ -22,11 +22,7 @@ func CreateTempFile(dir, name string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if closeErr := tempFile.Close(); closeErr != nil {
-			err = fmt.Errorf("failed to close zipped file: %w", closeErr)
-		}
-	}()
+	defer tempFile.Close()
 
 	_, err = tempFile.Write([]byte(filepath.Base(tempFile.Name())))
 	if err != nil {
@@ -44,17 +40,19 @@ func CreateTempFile(dir, name string) (*os.File, error) {
 //
 // subdirs is the number of subdirectories to create. The subdirectories will contain the same number
 // of files as the parent directory.
-func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, error) {
+func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, int, error) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var tempFiles []*os.File
 
+	expectedFiles := files + (files * subdirs)
+
 	for i := 0; i < files; i++ {
 		tempFile, err := CreateTempFile(dir, fmt.Sprintf("test%d-*.txt", i))
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		tempFiles = append(tempFiles, tempFile)
@@ -64,20 +62,20 @@ func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, error) {
 		subfolder := filepath.Join(dir, fmt.Sprintf("subfolder%d", i))
 
 		if err := os.MkdirAll(subfolder, os.ModePerm); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		for j := 0; j < files; j++ {
 			tempFile, err := CreateTempFile(subfolder, fmt.Sprintf("test%d-*.txt", j))
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 
 			tempFiles = append(tempFiles, tempFile)
 		}
 	}
 
-	return tempFiles, nil
+	return tempFiles, expectedFiles, nil
 }
 
 // CreateZipFile creates a zip file with the specified number of files and subdirectories.
@@ -88,32 +86,34 @@ func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, error) {
 //
 // subdirs is the number of subdirectories to create. The subdirectories will contain the same number
 // of files as the parent directory.
-func CreateZipFile(zipFilePath string, files int, subdirs int) error {
+func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
 	// Step 1: Create a temporary directory to hold the files
 	tempDir, err := os.MkdirTemp("", "zip-temp-")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer os.RemoveAll(tempDir) // Clean up the temporary directory
+
+	expectedFiles := files + (files * subdirs)
 
 	// Step 2: Create files and subdirectories in the temporary directory
 	for i := 0; i < files; i++ {
 		filePath := filepath.Join(tempDir, fmt.Sprintf("test%d.txt", i))
 		if err := os.WriteFile(filePath, []byte(fmt.Sprintf("Test File %d", i)), 0644); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	for i := 0; i < subdirs; i++ {
 		subfolderPath := filepath.Join(tempDir, fmt.Sprintf("subfolder%d", i))
 		if err := os.MkdirAll(subfolderPath, os.ModePerm); err != nil {
-			return err
+			return 0, err
 		}
 
 		for j := 0; j < files; j++ {
 			filePath := filepath.Join(subfolderPath, fmt.Sprintf("test%d.txt", j))
 			if err := os.WriteFile(filePath, []byte(fmt.Sprintf("Test File %d", j)), 0644); err != nil {
-				return err
+				return 0, err
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) error {
 	// Step 3: Create the zip file
 	zFile, err := os.Create(zipFilePath)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer zFile.Close()
 
@@ -168,7 +168,7 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) error {
 		return err
 	})
 
-	return err
+	return expectedFiles, err
 }
 
 // PermissionTest is a helper function to wrap another function that requires a file to have specific permissions.
@@ -197,12 +197,7 @@ func PermissionTest(filePermPath string, funcToRun interface{}, args ...interfac
 		if err := os.Chmod(filePermPath, 0000); err != nil {
 			return err
 		}
-		defer func() {
-			// Restore permissions after the test
-			if restoreErr := os.Chmod(filePermPath, 0755); restoreErr != nil {
-				err = restoreErr
-			}
-		}()
+		defer os.Chmod(filePermPath, 0755)
 	}
 
 	// Use reflection to call the target function with the provided arguments

@@ -21,13 +21,8 @@ func TestZippyAdd(t *testing.T) {
 	}
 	defer func() {
 		// Change back to the original working directory
-		if err := os.Chdir(originalDir); err != nil {
-			t.Fatalf("Failed to change back to original working directory: %v", err)
-		}
-
-		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
-			t.Fatalf("Failed to remove temp dir: %v", removeErr)
-		}
+		os.Chdir(originalDir)
+		os.RemoveAll(tempDir)
 	}()
 
 	// Set the working directory to the temporary directory
@@ -59,7 +54,7 @@ func TestZippyAdd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.exists {
-				if _, err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
+				if _, _, err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
 					t.Fatalf("Failed to create test files: %v", err)
 				}
 			}
@@ -99,13 +94,8 @@ func TestZippyDelete(t *testing.T) {
 	}
 	defer func() {
 		// Change back to the original working directory
-		if err := os.Chdir(originalDir); err != nil {
-			t.Fatalf("Failed to change back to original working directory: %v", err)
-		}
-
-		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
-			t.Fatalf("Failed to remove temp dir: %v", removeErr)
-		}
+		os.Chdir(originalDir)
+		os.RemoveAll(tempDir)
 	}()
 
 	// Set the working directory to the temporary directory
@@ -134,7 +124,7 @@ func TestZippyDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.exists {
-				if _, err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
+				if _, _, err = testutils.CreateTestFiles(tt.filePath, tt.files, tt.subfolders); err != nil {
 					t.Fatalf("Failed to create test files: %v", err)
 				}
 
