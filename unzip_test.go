@@ -3,7 +3,6 @@ package zippy
 import (
 	"archive/zip"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,7 +46,7 @@ func Test_Unzippy_Extract(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		err := testutils.CreateZipFile(zipFilePath, 10, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -66,7 +65,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		err := testutils.CreateZipFile(zipFilePath, 10, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -83,7 +82,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		err := testutils.CreateZipFile(zipFilePath, 0, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 0, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -100,7 +99,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		err := testutils.CreateZipFile(zipFilePath, 10, 2)
+		_, err := testutils.CreateZipFile(zipFilePath, 10, 2)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -117,7 +116,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		err := testutils.CreateZipFile(zipFilePath, 0, 2)
+		_, err := testutils.CreateZipFile(zipFilePath, 0, 2)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -179,7 +178,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, "bad-in-perm.zip")
 		dest := filepath.Join(tempDir, "bad-in-perm")
 
-		err := testutils.CreateZipFile(zipFilePath, 0, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 0, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -195,7 +194,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, "bad-out-perm.zip")
 		dest := filepath.Join(tempDir, "bad-out-perm")
 
-		err := testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -213,7 +212,7 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 // Tests for [Unzippy.copyAndValidate] function.
 func Test_Unzippy_copyAndValidate(t *testing.T) {
 	initUnzippy := func(t *testing.T, zipFilePath string) (*Unzippy, *zip.ReadCloser) {
-		err := testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -318,7 +317,7 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		err := testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -339,7 +338,7 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		err := testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -366,7 +365,7 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		err := os.MkdirAll(zipFileDirPath, os.ModePerm)
 		assert.NoError(t, err)
 
-		err = testutils.CreateZipFile(zipFilePath, 1, 1)
+		_, err = testutils.CreateZipFile(zipFilePath, 1, 1)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -393,7 +392,7 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		err := os.MkdirAll(zipFileDirPath, os.ModePerm)
 		assert.NoError(t, err)
 
-		err = testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err = testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -413,23 +412,13 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 	})
 }
 
-// mockZipFile is a custom struct that embeds zip.File and overrides the Open method.
-type mockZipFile struct {
-	*zip.File
-}
-
-// Open overrides the Open method to return a mock error.
-func (m *mockZipFile) Open() (io.ReadCloser, error) {
-	return nil, fmt.Errorf("mock open error")
-}
-
 // TODO: Tests for [Unzippy.unzipFiles] function.
 func Test_Unzippy_unzipFiles(t *testing.T) {
 	t.Run("valid unzip files", func(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		err := testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
@@ -449,7 +438,7 @@ func Test_Unzippy_unzipFiles(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		err := testutils.CreateZipFile(zipFilePath, 1, 0)
+		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
 		assert.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, &UnzippyOptions{Junk: true})

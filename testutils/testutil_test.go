@@ -26,8 +26,9 @@ func TestCreateTempFile(t *testing.T) {
 func TestCreateTestFiles(t *testing.T) {
 	tempDir := t.TempDir()
 
-	_, err := CreateTestFiles(tempDir, 3, 2)
+	testFiles, expectedCount, err := CreateTestFiles(tempDir, 3, 2)
 	assert.NoError(t, err)
+	assert.Equal(t, expectedCount, len(testFiles))
 
 	// Check if the files and subdirectories were created
 	files, err := os.ReadDir(tempDir)
@@ -57,7 +58,7 @@ func TestCreateZipFile(t *testing.T) {
 	tempDir := t.TempDir()
 	zipFilePath := filepath.Join(tempDir, "test.zip")
 
-	err := CreateZipFile(zipFilePath, 3, 2)
+	expectedCount, err := CreateZipFile(zipFilePath, 3, 2)
 	assert.NoError(t, err)
 
 	// Check if the zip file was created
@@ -69,7 +70,7 @@ func TestCreateZipFile(t *testing.T) {
 	assert.NoError(t, err)
 	defer zFile.Close()
 
-	expectedFiles := 3
+	// expectedFiles := 3
 	expectedDirs := 2
 	actualFiles := 0
 	actualDirs := 0
@@ -82,7 +83,7 @@ func TestCreateZipFile(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, expectedFiles+expectedFiles*expectedDirs, actualFiles)
+	assert.Equal(t, expectedCount, actualFiles)
 	assert.Equal(t, expectedDirs, actualDirs)
 }
 
