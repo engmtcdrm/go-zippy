@@ -40,8 +40,8 @@ func Test_NewUnzippy(t *testing.T) {
 
 }
 
-// Tests for [Unzippy.Extract] function.
-func Test_Unzippy_Extract(t *testing.T) {
+// Tests for [Unzippy.Extract] and [Unzippy.ExtractFiles] function.
+func Test_Unzippy_Extract_ExtractFiles(t *testing.T) {
 	t.Run("zip exists", func(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
@@ -55,6 +55,39 @@ func Test_Unzippy_Extract(t *testing.T) {
 
 		_, err = u.Extract()
 		assert.NoError(t, err)
+	})
+}
+
+// Tests for [Unzip.ExtractFilesTo] function.
+func Test_Unzippy_ExtractFilesTo(t *testing.T) {
+	t.Run("valid zip", func(t *testing.T) {
+		tempDir := t.TempDir()
+		zipFilePath := filepath.Join(tempDir, testZipFileName)
+
+		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
+		assert.NoError(t, err)
+
+		u, err := NewUnzippy(zipFilePath, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, u)
+
+		_, err = u.ExtractFilesTo(tempDir)
+		assert.NoError(t, err)
+	})
+
+	t.Run("invalid glob pattern", func(t *testing.T) {
+		tempDir := t.TempDir()
+		zipFilePath := filepath.Join(tempDir, testZipFileName)
+
+		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
+		assert.NoError(t, err)
+
+		u, err := NewUnzippy(zipFilePath, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, u)
+
+		_, err = u.ExtractFilesTo(tempDir, "[")
+		assert.Error(t, err)
 	})
 }
 

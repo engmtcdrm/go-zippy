@@ -121,4 +121,28 @@ func Test_validateCopy(t *testing.T) {
 		err := validateCopy(validPath, 100, 200)
 		assert.Error(t, err)
 	})
+
+	t.Run("error from filepath.Abs", func(t *testing.T) {
+		tempDir := t.TempDir()
+		testTmpDir, err := os.MkdirTemp(tempDir, "test")
+		assert.NoError(t, err)
+
+		// Save current directory to restore later
+		origDir, err := os.Getwd()
+		assert.NoError(t, err)
+		defer func() {
+			_ = os.Chdir(origDir)
+		}()
+
+		// Change to the temp directory
+		err = os.Chdir(testTmpDir)
+		assert.NoError(t, err)
+
+		// Remove the directory we're currently in
+		err = os.Remove(testTmpDir)
+		assert.NoError(t, err)
+
+		err = validateCopy("relative/path", 100, 100)
+		assert.Error(t, err)
+	})
 }
