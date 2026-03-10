@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -7,15 +7,19 @@ import (
 	"strings"
 
 	"github.com/engmtcdrm/go-zippy"
+	"github.com/engmtcdrm/go-zippy/testutils"
 )
 
-func main() {
-	cwd, err := os.Getwd()
+func ExampleContents() {
+	tempDir, err := os.MkdirTemp(os.TempDir(), "go-zippy-contents-example-")
 	if err != nil {
 		panic(err)
 	}
+	defer os.RemoveAll(tempDir)
 
-	path := filepath.Join(cwd, "contents.zip")
+	path := filepath.Join(tempDir, "contents.zip")
+
+	testutils.CreateZipFile(path, 10, 0)
 
 	zFiles, err := zippy.Contents(path)
 	if err != nil {
