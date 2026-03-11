@@ -4,19 +4,14 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"reflect"
-	"runtime"
 )
 
-// CreateTempFile creates a temporary file in the specified directory with the specified name.
-// The file is created with a random name and the content of the file is the name of the file.
-//
-// dir is the directory where the file will be created.
-//
-// name is the name of the file.
+// CreateTempFile creates a temporary file using [os.CreateTemp] in the given
+// directory with the specified name pattern and writes the base name of the
+// temporary file to its contents.
 func CreateTempFile(dir, name string) (*os.File, error) {
 	tempFile, err := os.CreateTemp(dir, name)
 	if err != nil {
@@ -29,63 +24,59 @@ func CreateTempFile(dir, name string) (*os.File, error) {
 		return nil, err
 	}
 
+	slog.Debug(fmt.Sprintf("Created file %s", tempFile.Name()))
+
 	return tempFile, err
 }
 
-// CreateTestFiles creates a specified number of files and subdirectories in the specified directory.
-//
-// dir is the directory where the files and subdirectories will be created.
-//
-// files is the number of files to create.
-//
-// subdirs is the number of subdirectories to create. The subdirectories will contain the same number
-// of files as the parent directory.
-func CreateTestFiles(dir string, files int, subdirs int) ([]*os.File, int, error) {
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return nil, 0, err
+// CreateTempFiles creates the specified number of temporary files in the given
+// directory.
+func CreateTempFiles(dir string, files int) ([]*os.File, error) {
+	if files < 0 {
+		return nil, fmt.Errorf("invalid number of files: %d", files)
 	}
 
-	var tempFiles []*os.File
+	tempFiles := make([]*os.File, 0, files)
 
-	expectedFiles := files + (files * subdirs)
-
-	for i := 0; i < files; i++ {
-		tempFile, err := CreateTempFile(dir, fmt.Sprintf("test%d-*.txt", i))
+	for i := range files {
+		file, err := CreateTempFile(dir, fmt.Sprintf("test%d-*.txt", i))
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 
-		tempFiles = append(tempFiles, tempFile)
+		tempFiles = append(tempFiles, file)
 	}
 
-	for i := 0; i < subdirs; i++ {
-		subfolder := filepath.Join(dir, fmt.Sprintf("subfolder%d", i))
-
-		if err := os.MkdirAll(subfolder, os.ModePerm); err != nil {
-			return nil, 0, err
-		}
-
-		for j := 0; j < files; j++ {
-			tempFile, err := CreateTempFile(subfolder, fmt.Sprintf("test%d-*.txt", j))
-			if err != nil {
-				return nil, 0, err
-			}
-
-			tempFiles = append(tempFiles, tempFile)
-		}
-	}
-
-	return tempFiles, expectedFiles, nil
+	return tempFiles, nil
 }
 
-// CreateZipFile creates a zip file with the specified number of files and subdirectories.
-//
-// zipFilePath is the path to the zip file to create.
-//
-// files is the number of files to create.
-//
-// subdirs is the number of subdirectories to create. The subdirectories will contain the same number
-// of files as the parent directory.
+// CreateTempFilesInSubdirs creates the specified number of temporary files in
+// the given directory and in the specified number of subdirectories.
+func CreateTempFilesInSubdirs(dir string, files int, subdirs int) ([]*os.File, error) {
+	totalFiles := files + (files * subdirs)
+	tempFiles := make([]*os.File, 0, totalFiles)
+
+	for i := range subdirs {
+		subdirPath, err := os.MkdirTemp(dir, fmt.Sprintf("subfolder%d-*", i))
+		if err != nil {
+			return nil, err
+		}
+
+		slog.Debug(fmt.Sprintf("Created subdirectory %s", subdirPath))
+
+		subTempFiles, err := CreateTempFiles(subdirPath, files)
+		if err != nil {
+			return nil, err
+		}
+
+		tempFiles = append(tempFiles, subTempFiles...)
+	}
+
+	return tempFiles, nil
+}
+
+// CreateZipFile creates a zip file with the specified number of files and
+// subdirectories.
 func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
 	// Step 1: Create a temporary directory to hold the files
 	tempDir, err := os.MkdirTemp("", "zip-temp-")
@@ -96,26 +87,15 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
 
 	expectedFiles := files + (files * subdirs)
 
+	slog.Debug(fmt.Sprintf("Creating %d files/subdirectories in %s\n", expectedFiles+subdirs, tempDir))
+
 	// Step 2: Create files and subdirectories in the temporary directory
-	for i := 0; i < files; i++ {
-		filePath := filepath.Join(tempDir, fmt.Sprintf("test%d.txt", i))
-		if err := os.WriteFile(filePath, []byte(fmt.Sprintf("Test File %d", i)), 0644); err != nil {
-			return 0, err
-		}
+	if _, err := CreateTempFiles(tempDir, files); err != nil {
+		return 0, err
 	}
 
-	for i := 0; i < subdirs; i++ {
-		subfolderPath := filepath.Join(tempDir, fmt.Sprintf("subfolder%d", i))
-		if err := os.MkdirAll(subfolderPath, os.ModePerm); err != nil {
-			return 0, err
-		}
-
-		for j := 0; j < files; j++ {
-			filePath := filepath.Join(subfolderPath, fmt.Sprintf("test%d.txt", j))
-			if err := os.WriteFile(filePath, []byte(fmt.Sprintf("Test File %d", j)), 0644); err != nil {
-				return 0, err
-			}
-		}
+	if _, err := CreateTempFilesInSubdirs(tempDir, files, subdirs); err != nil {
+		return 0, err
 	}
 
 	// Step 3: Create the zip file
@@ -129,7 +109,18 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
 	defer zWrite.Close()
 
 	// Step 4: Walk through the temporary directory and add files to the zip archive
-	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(tempDir, addFilesToZip(tempDir, zWrite))
+
+	slog.Debug("")
+	slog.Debug(fmt.Sprintf("Created zip file %s", zipFilePath))
+
+	return expectedFiles, err
+}
+
+// addFilesToZip returns a filepath.WalkFunc that adds files and directories
+// from the specified tempDir to the provided zip.Writer.
+func addFilesToZip(tempDir string, zWrite *zip.Writer) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -166,53 +157,5 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
 
 		_, err = io.Copy(zipFile, srcFile)
 		return err
-	})
-
-	return expectedFiles, err
-}
-
-// PermissionTest is a helper function to wrap another function that requires a file to have specific permissions.
-//
-// filePermPath is the path to the file to change permissions on.
-//
-// funcToRun is the function to run that requires the file to have specific permissions.
-//
-// args are the arguments to pass to the function.
-func PermissionTest(filePermPath string, funcToRun interface{}, args ...interface{}) error {
-	var err error
-
-	if runtime.GOOS == "windows" {
-		cmd := exec.Command("icacls", filePermPath, "/deny", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-		if err := cmd.Run(); err != nil {
-			return err
-		}
-		defer func() {
-			// Restore permissions after the test
-			cmd := exec.Command("icacls", filePermPath, "/grant", fmt.Sprintf("%s:F", os.Getenv("USERNAME")))
-			if runError := cmd.Run(); runError != nil {
-				err = runError
-			}
-		}()
-	} else {
-		if err := os.Chmod(filePermPath, 0000); err != nil {
-			return err
-		}
-		defer os.Chmod(filePermPath, 0755)
 	}
-
-	// Use reflection to call the target function with the provided arguments
-	funcValue := reflect.ValueOf(funcToRun)
-	funcArgs := make([]reflect.Value, len(args))
-	for i, arg := range args {
-		funcArgs[i] = reflect.ValueOf(arg)
-	}
-
-	results := funcValue.Call(funcArgs)
-
-	// Check if the function returned an error
-	if len(results) > 0 && !results[len(results)-1].IsNil() {
-		err = results[len(results)-1].Interface().(error)
-	}
-
-	return err
 }
