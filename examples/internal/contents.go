@@ -3,30 +3,26 @@ package internal
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/engmtcdrm/go-zippy"
-	"github.com/engmtcdrm/go-zippy/testutils"
 )
 
 func ExampleContents() {
-	tempDir, err := os.MkdirTemp(os.TempDir(), "go-zippy-contents-example-")
+	tempDir, zipPath, err := createZipFile(10, 1)
 	if err != nil {
-		panic(err)
+		fmt.Printf("failed to create zip file: %v\n", err)
+		return
 	}
 	defer os.RemoveAll(tempDir)
 
-	path := filepath.Join(tempDir, "contents.zip")
-
-	testutils.CreateZipFile(path, 10, 0)
-
-	zFiles, err := zippy.Contents(path)
+	zFiles, err := zippy.Contents(zipPath)
 	if err != nil {
-		panic(err)
+		fmt.Printf("failed to get contents of zip file: %v\n", err)
+		return
 	}
 
-	fmt.Printf("Contents of zip file (%s):\n\n", path)
+	fmt.Printf("\nContents of zip file (%s):\n\n", zipPath)
 
 	var fileCnt = 0
 
