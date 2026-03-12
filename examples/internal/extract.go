@@ -3,8 +3,6 @@ package internal
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/engmtcdrm/go-zippy"
 )
@@ -29,26 +27,5 @@ func ExtractExample() {
 		return
 	}
 
-	fmt.Println()
-	fmt.Println("Extracted files:")
-	fmt.Println()
-
-	pad := 0
-
-	for _, zFile := range zFiles {
-		if len(zFile.Name) > pad {
-			pad = len(zFile.Name)
-		}
-	}
-
-	for _, file := range zFiles {
-		fmt.Printf(
-			"Archive path:\t%s%s\tExtracted to:\t%s\n",
-			file.Name,
-			strings.Repeat(" ", pad-len(file.Name)),
-			filepath.Join(tempDir, file.Name),
-		)
-	}
-
-	fmt.Println()
+	displayExtractedFiles(tempDir, zFiles)
 }
