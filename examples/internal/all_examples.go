@@ -12,4 +12,7 @@ const (
 var AllExamples = []eggy.Example{
 	{Name: "Contents Example", Fn: ExampleContents},
 	{Name: "Extract Example", Fn: ExtractExample},
+	{Name: "Extract To Example", Fn: ExtractTo},
+	{Name: "Extract Files Example", Fn: ExtractFiles},
+	{Name: "Extract Files To Example", Fn: ExtractFilesTo},
 }
