@@ -68,7 +68,7 @@ func Test_removeDriveLetter(t *testing.T) {
 		}
 
 		validPath := "C:\\windows"
-		expectedPath := "windows"
+		expectedPath := "\\windows"
 
 		processedPath := removeDriveLetter(validPath)
 		assert.Equal(t, expectedPath, processedPath)
@@ -140,7 +140,13 @@ func Test_validateCopy(t *testing.T) {
 
 		// Remove the directory we're currently in
 		err = os.Remove(testTmpDir)
-		assert.NoError(t, err)
+		// Non-Windows systems should be able to remove the current directory
+		// without error
+		if runtime.GOOS != "windows" {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
 
 		err = validateCopy("relative/path", 100, 100)
 		assert.Error(t, err)

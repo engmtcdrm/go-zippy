@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/engmtcdrm/go-zippy/testutils"
+	"github.com/engmtcdrm/go-zippy/internal/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
