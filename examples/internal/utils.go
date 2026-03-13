@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/engmtcdrm/go-zippy/testutils"
+	"github.com/engmtcdrm/go-zippy/internal/testutils"
 )
 
 // createZipFile creates a temporary zip file with the specified number of files
