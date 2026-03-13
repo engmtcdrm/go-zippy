@@ -9,29 +9,11 @@ import (
 	"strings"
 )
 
-// ZippyInterface defines the methods for working with zip archives.
 type ZippyInterface interface {
-	// Adds files or directories to a zip archive.
-	//
-	// files are the files or directories to archive. Glob patterns are supported.
 	Add(files ...string) (err error)
-
-	// Deletes files or directories from an existing zip archive.
-	//
-	// files are the files or directories to delete. Glob patterns are supported.
-	Delete(files ...string) (err error)
-
-	// Updates files in a zip archive.
-	//
-	// files are the files or directories to update. Glob patterns are supported.
-	Update(files ...string) (err error)
-
-	// Copies files from existing zip archive to a new zip archive.
-	//
-	// dest is the new zip archive path.
-	//
-	// files are the files to copy. Glob patterns are supported. If no files are provided, all files will be copied.
 	Copy(dest string, files ...string) (err error)
+	Delete(files ...string) (err error)
+	Update(files ...string) (err error)
 }
 
 type Zippy struct {
@@ -52,6 +34,117 @@ func NewZippy(path string) *Zippy {
 		tempFile:      "zippy-*",
 		existingFiles: make(map[string]*zip.File),
 	}
+}
+
+// Adds files or directories to a zip archive.
+//
+// files are the files or directories to archive. Glob patterns are supported.
+func (z *Zippy) Add(files ...string) (err error) {
+	if err := os.MkdirAll(filepath.Dir(z.Path), os.ModePerm); err != nil {
+		return err
+	}
+
+	var zipFile *os.File
+
+	_, err = os.Stat(z.Path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	} else if os.IsNotExist(err) {
+		zipFile, err = os.Create(z.Path)
+		if err != nil {
+			return err
+		}
+		defer zipFile.Close()
+	} else {
+		zipFile, err = os.OpenFile(z.Path, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		defer zipFile.Close()
+
+		z.zReadCloser, err = zip.OpenReader(z.Path)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		defer z.zReadCloser.Close()
+	}
+
+	z.zWriter = zip.NewWriter(zipFile)
+	defer z.zWriter.Close()
+
+	// Copy existing files to the new zip archive if zip file exists
+	if err == nil && z.zReadCloser != nil {
+		z.existingFiles = make(map[string]*zip.File)
+
+		for _, f := range z.zReadCloser.File {
+			z.existingFiles[f.Name] = f
+		}
+
+		for _, f := range z.zReadCloser.File {
+			if err := z.zWriter.Copy(f); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := z.zipFiles(files...); err != nil {
+		return err
+	}
+
+	return err
+}
+
+// Copies files from existing zip archive to a new zip archive.
+//
+// dest is the new zip archive path.
+//
+// files are the files to copy.  Glob patterns are supported. If no files are provided, all files will be copied.
+func (z *Zippy) Copy(dest string, files ...string) (err error) {
+	tempZipPath, err := z.createTempZipWithFiles(dest, files...)
+	if err != nil {
+		return err
+	}
+
+	// Rename the temporary zip file to the destination path
+	if err := os.Rename(tempZipPath, dest); err != nil {
+		return fmt.Errorf("failed to rename temporary zip file: %w", err)
+	}
+
+	return err
+}
+
+// Deletes files or directories from an existing zip archive.
+//
+// files are the files or directories to delete. Glob patterns are supported.
+func (z *Zippy) Delete(files ...string) (err error) {
+	tempZipPath, err := z.createTempZipWithoutFiles(files...)
+	if err != nil {
+		// If the temp zip file was made, but we had an error happen after the fact
+		// lets clean it up if it exists
+		_, err = os.Stat(tempZipPath)
+		if err == nil {
+			if err := os.Remove(tempZipPath); err != nil {
+				return err
+			}
+		}
+
+		return err
+	}
+
+	// Rename the temporary zip file to the original path
+	if err := os.Rename(tempZipPath, z.Path); err != nil {
+		return fmt.Errorf("failed to rename temporary zip file: %w", err)
+	}
+
+	return err
+}
+
+// Updates files in a zip archive.
+//
+// files are the files or directories to update.  Glob patterns are supported.
+func (z *Zippy) Update(files ...string) (err error) {
+	// TODO: Implementation of Update method
+	return err
 }
 
 func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPath string, err error) {
@@ -157,6 +250,71 @@ func (z *Zippy) copyEntireZip(tempZipPath string) (string, error) {
 	}
 
 	return tempZipPath, err
+}
+
+// Keeps only the files that match the given patterns and copies them to another zip archive.
+//
+// files are the files to copy.
+//
+// patterns are the patterns to match files to keep.
+func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns []string) error {
+	// Map to track directories that need to be included
+	dirsToInclude := make(map[string]bool)
+	filesToCopy := make(map[string]*zip.File)
+
+	// First pass: identify files to keep and their parent directories
+	for _, file := range files {
+		shouldKeep := false
+		for _, fileToKeep := range patterns {
+			match, err := filepath.Match(fileToKeep, file.Name)
+			if err != nil {
+				return err
+			}
+
+			if match {
+				shouldKeep = true
+				break
+			}
+		}
+
+		if shouldKeep {
+			filesToCopy[file.Name] = file
+
+			// Mark all parent directories for inclusion using ZIP paths
+			// Use strings.Split/Join instead of filepath.Dir to maintain forward slashes
+			parts := strings.Split(file.Name, "/")
+			for i := len(parts) - 1; i > 0; i-- {
+				dir := strings.Join(parts[:i], "/")
+				if dir != "" {
+					dirsToInclude[dir] = true
+				}
+			}
+		}
+	}
+
+	// Second pass: copy all directories first
+	for _, file := range files {
+		if file.FileInfo().IsDir() {
+			// If this is a directory that needs to be included
+			dirName := strings.TrimSuffix(file.Name, "/")
+			if dirsToInclude[dirName] {
+				if err := z.zWriter.Copy(file); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Third pass: copy all files
+	for _, file := range filesToCopy {
+		if !file.FileInfo().IsDir() {
+			if err := z.zWriter.Copy(file); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Copies files from a zip archive to another zip archive, removing files that match the given patterns.
@@ -267,71 +425,6 @@ func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns []string) error {
 	return nil
 }
 
-// Keeps only the files that match the given patterns and copies them to another zip archive.
-//
-// files are the files to copy.
-//
-// patterns are the patterns to match files to keep.
-func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns []string) error {
-	// Map to track directories that need to be included
-	dirsToInclude := make(map[string]bool)
-	filesToCopy := make(map[string]*zip.File)
-
-	// First pass: identify files to keep and their parent directories
-	for _, file := range files {
-		shouldKeep := false
-		for _, fileToKeep := range patterns {
-			match, err := filepath.Match(fileToKeep, file.Name)
-			if err != nil {
-				return err
-			}
-
-			if match {
-				shouldKeep = true
-				break
-			}
-		}
-
-		if shouldKeep {
-			filesToCopy[file.Name] = file
-
-			// Mark all parent directories for inclusion using ZIP paths
-			// Use strings.Split/Join instead of filepath.Dir to maintain forward slashes
-			parts := strings.Split(file.Name, "/")
-			for i := len(parts) - 1; i > 0; i-- {
-				dir := strings.Join(parts[:i], "/")
-				if dir != "" {
-					dirsToInclude[dir] = true
-				}
-			}
-		}
-	}
-
-	// Second pass: copy all directories first
-	for _, file := range files {
-		if file.FileInfo().IsDir() {
-			// If this is a directory that needs to be included
-			dirName := strings.TrimSuffix(file.Name, "/")
-			if dirsToInclude[dirName] {
-				if err := z.zWriter.Copy(file); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	// Third pass: copy all files
-	for _, file := range filesToCopy {
-		if !file.FileInfo().IsDir() {
-			if err := z.zWriter.Copy(file); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // Adds a file or directory to a zip archive.
 //
 // path is the file or directory to add.
@@ -434,115 +527,4 @@ func (z *Zippy) zipFiles(files ...string) error {
 	}
 
 	return nil
-}
-
-// Adds files or directories to a zip archive.
-//
-// files are the files or directories to archive. Glob patterns are supported.
-func (z *Zippy) Add(files ...string) (err error) {
-	if err := os.MkdirAll(filepath.Dir(z.Path), os.ModePerm); err != nil {
-		return err
-	}
-
-	var zipFile *os.File
-
-	_, err = os.Stat(z.Path)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	} else if os.IsNotExist(err) {
-		zipFile, err = os.Create(z.Path)
-		if err != nil {
-			return err
-		}
-		defer zipFile.Close()
-	} else {
-		zipFile, err = os.OpenFile(z.Path, os.O_RDWR|os.O_CREATE, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		defer zipFile.Close()
-
-		z.zReadCloser, err = zip.OpenReader(z.Path)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		defer z.zReadCloser.Close()
-	}
-
-	z.zWriter = zip.NewWriter(zipFile)
-	defer z.zWriter.Close()
-
-	// Copy existing files to the new zip archive if zip file exists
-	if err == nil && z.zReadCloser != nil {
-		z.existingFiles = make(map[string]*zip.File)
-
-		for _, f := range z.zReadCloser.File {
-			z.existingFiles[f.Name] = f
-		}
-
-		for _, f := range z.zReadCloser.File {
-			if err := z.zWriter.Copy(f); err != nil {
-				return err
-			}
-		}
-	}
-
-	if err := z.zipFiles(files...); err != nil {
-		return err
-	}
-
-	return err
-}
-
-// Deletes files or directories from an existing zip archive.
-//
-// files are the files or directories to delete. Glob patterns are supported.
-func (z *Zippy) Delete(files ...string) (err error) {
-	tempZipPath, err := z.createTempZipWithoutFiles(files...)
-	if err != nil {
-		// If the temp zip file was made, but we had an error happen after the fact
-		// lets clean it up if it exists
-		_, err = os.Stat(tempZipPath)
-		if err == nil {
-			if err := os.Remove(tempZipPath); err != nil {
-				return err
-			}
-		}
-
-		return err
-	}
-
-	// Rename the temporary zip file to the original path
-	if err := os.Rename(tempZipPath, z.Path); err != nil {
-		return fmt.Errorf("failed to rename temporary zip file: %w", err)
-	}
-
-	return err
-}
-
-// Updates files in a zip archive.
-//
-// files are the files or directories to update.  Glob patterns are supported.
-func (z *Zippy) Update(files ...string) (err error) {
-	// TODO: Implementation of Update method
-	return err
-}
-
-// Copies files from existing zip archive to a new zip archive.
-//
-// dest is the new zip archive path.
-//
-// files are the files to copy.  Glob patterns are supported. If no files are provided, all files will be copied.
-func (z *Zippy) Copy(dest string, files ...string) (err error) {
-	tempZipPath, err := z.createTempZipWithFiles(dest, files...)
-	if err != nil {
-		return err
-	}
-
-	// Rename the temporary zip file to the destination path
-	if err := os.Rename(tempZipPath, dest); err != nil {
-		return fmt.Errorf("failed to rename temporary zip file: %w", err)
-	}
-
-	return err
 }
