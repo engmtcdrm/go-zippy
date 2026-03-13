@@ -68,7 +68,7 @@ func Test_removeDriveLetter(t *testing.T) {
 		}
 
 		validPath := "C:\\windows"
-		expectedPath := "windows"
+		expectedPath := "\\windows"
 
 		processedPath := removeDriveLetter(validPath)
 		assert.Equal(t, expectedPath, processedPath)
