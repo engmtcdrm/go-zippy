@@ -29,6 +29,13 @@ func CreateTempFile(dir, name string) (*os.File, error) {
 	return tempFile, err
 }
 
+// CreateTempFilename creates a temporary filename based on the given pattern.
+// The last wildcard "*" in the pattern will be replaced with random digits.
+func CreateTempFilename(pattern string) string {
+	prefix, suffix := prefixAndSuffix(pattern)
+	return prefix + genRandomDigits(10) + suffix
+}
+
 // CreateTempFiles creates the specified number of temporary files in the given
 // directory.
 func CreateTempFiles(dir string, files int) ([]*os.File, error) {
