@@ -17,7 +17,8 @@ type ZippyInterface interface {
 }
 
 type Zippy struct {
-	Path          string // The path, including the file name, to the zip archive.
+	filePath      string // The path, including the file name, to the zip archive.
+	fileDirPath   string // The directory path of the zip archive.
 	Junk          bool   // Specifies whether to junk the path when archiving.
 	tempFile      string // Temp file name when working with zip archives.
 	existingFiles map[string]*zip.File
@@ -29,7 +30,8 @@ func NewZippy(path string) *Zippy {
 	path = filepath.Clean(path)
 
 	return &Zippy{
-		Path:          path,
+		filePath:      path,
+		fileDirPath:   filepath.Dir(path),
 		Junk:          false,
 		tempFile:      "zippy-*",
 		existingFiles: make(map[string]*zip.File),
@@ -39,51 +41,30 @@ func NewZippy(path string) *Zippy {
 // Adds files or directories to a zip archive.
 //
 // files are the files or directories to archive. Glob patterns are supported.
-func (z *Zippy) Add(files ...string) (err error) {
-	if err := os.MkdirAll(filepath.Dir(z.Path), os.ModePerm); err != nil {
+func (z *Zippy) Add(files ...string) error {
+	if err := os.MkdirAll(z.fileDirPath, os.ModePerm); err != nil {
 		return err
 	}
 
 	var zipFile *os.File
+	var err error
 
-	_, err = os.Stat(z.Path)
-	if err != nil && !os.IsNotExist(err) {
+	zipFile, z.zReadCloser, err = openZipFile(z.filePath)
+	if err != nil {
 		return err
-	} else if os.IsNotExist(err) {
-		zipFile, err = os.Create(z.Path)
-		if err != nil {
-			return err
-		}
-		defer zipFile.Close()
-	} else {
-		zipFile, err = os.OpenFile(z.Path, os.O_RDWR|os.O_CREATE, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		defer zipFile.Close()
-
-		z.zReadCloser, err = zip.OpenReader(z.Path)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		defer z.zReadCloser.Close()
 	}
+	defer zipFile.Close()
 
 	z.zWriter = zip.NewWriter(zipFile)
 	defer z.zWriter.Close()
 
 	// Copy existing files to the new zip archive if zip file exists
-	if err == nil && z.zReadCloser != nil {
-		z.existingFiles = make(map[string]*zip.File)
+	if z.zReadCloser != nil {
+		defer z.zReadCloser.Close()
 
-		for _, f := range z.zReadCloser.File {
-			z.existingFiles[f.Name] = f
-		}
-
-		for _, f := range z.zReadCloser.File {
-			if err := z.zWriter.Copy(f); err != nil {
-				return err
-			}
+		z.existingFiles, err = copyZipFiles(z.zReadCloser, z.zWriter)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -91,7 +72,7 @@ func (z *Zippy) Add(files ...string) (err error) {
 		return err
 	}
 
-	return err
+	return nil
 }
 
 // Copies files from existing zip archive to a new zip archive.
@@ -132,7 +113,7 @@ func (z *Zippy) Delete(files ...string) (err error) {
 	}
 
 	// Rename the temporary zip file to the original path
-	if err := os.Rename(tempZipPath, z.Path); err != nil {
+	if err := os.Rename(tempZipPath, z.filePath); err != nil {
 		return fmt.Errorf("failed to rename temporary zip file: %w", err)
 	}
 
@@ -148,7 +129,7 @@ func (z *Zippy) Update(files ...string) (err error) {
 }
 
 func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPath string, err error) {
-	z.zReadCloser, err = zip.OpenReader(z.Path)
+	z.zReadCloser, err = zip.OpenReader(z.filePath)
 	if err != nil {
 		return "", err
 	}
@@ -189,14 +170,14 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 //
 // returns the path to the temporary zip file as well as any errors
 func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, err error) {
-	z.zReadCloser, err = zip.OpenReader(z.Path)
+	z.zReadCloser, err = zip.OpenReader(z.filePath)
 	if err != nil {
 		return "", err
 	}
 	defer z.zReadCloser.Close()
 
 	// Create a temporary zip file in the same directory as Zippy.Path
-	tempZipFile, err := os.CreateTemp(filepath.Dir(z.Path), z.tempFile)
+	tempZipFile, err := os.CreateTemp(z.fileDirPath, z.tempFile)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary zip file: %w", err)
 	}
@@ -232,7 +213,7 @@ func (z *Zippy) copyEntireZip(tempZipPath string) (string, error) {
 		z.zReadCloser = nil
 	}
 
-	fReader, err := os.Open(z.Path)
+	fReader, err := os.Open(z.filePath)
 	if err != nil {
 		return "", err
 	}
