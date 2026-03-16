@@ -3,6 +3,7 @@ package zippy
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/engmtcdrm/go-zippy/internal/testutils"
@@ -136,6 +137,46 @@ func TestZippyAdd(t *testing.T) {
 		assert.Len(t, zippedFiles, expectedFilesCount)
 	})
 
+	t.Run("non-existent zip input path", func(t *testing.T) {
+		tempDir := t.TempDir()
+		zipFileName := testutils.CreateTempFilename("test-*.zip")
+		zipFilePath := filepath.Join(tempDir, zipFileName)
+
+		z := NewZippy(zipFilePath)
+
+		err := z.Add("does-not-exist")
+		assert.Error(t, err)
+	})
+
+	t.Run("non-existent zip input path", func(t *testing.T) {
+		tempDir := t.TempDir()
+		zipFileName := testutils.CreateTempFilename("test-*.zip")
+		zipFilePath := filepath.Join(tempDir, zipFileName)
+
+		z := NewZippy(zipFilePath)
+
+		err := z.Add("does-not-exist")
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid zip input path", func(t *testing.T) {
+		tempDir := t.TempDir()
+		zipFileName := testutils.CreateTempFilename("test-*.zip")
+		zipFilePath := filepath.Join(tempDir, zipFileName)
+
+		z := NewZippy(zipFilePath)
+
+		var err error
+
+		if runtime.GOOS != "windows" {
+			err = z.Add("/invalid/path\0001")
+		} else {
+			err = z.Add("/invalid/path/NUL")
+		}
+
+		assert.Error(t, err)
+	})
+
 	// tests := []struct {
 	// 	testName   string
 	// 	exists     bool
@@ -151,8 +192,8 @@ func TestZippyAdd(t *testing.T) {
 	// 	// {"Zip 0 Files and 1 Subdirectory", true, filepath.Join(tempDir, "test0sub"), filepath.Join(tempDir, "test0sub.zip"), 0, 1, false},
 	// 	// {"Zip 1 File and 1 Subdirectory", true, filepath.Join(tempDir, "test1sub"), filepath.Join(tempDir, "test1sub.zip"), 1, 1, false},
 	// 	// {"Zip 10 Files and 2 Subdirectories", true, filepath.Join(tempDir, "test10sub2"), filepath.Join(tempDir, "test10sub2.zip"), 10, 2, false},
-	// 	{"Nonexistent Zip Input Path", false, "nonexistent", filepath.Join(tempDir, "nonexistent.zip"), 0, 0, true},
-	// 	{"Invalid Zip Input Path", false, "/invalid/path\0001", filepath.Join(tempDir, "invalid.zip"), 0, 0, true},
+	// 	// {"Nonexistent Zip Input Path", false, "nonexistent", filepath.Join(tempDir, "nonexistent.zip"), 0, 0, true},
+	// 	// {"Invalid Zip Input Path", false, "/invalid/path\0001", filepath.Join(tempDir, "invalid.zip"), 0, 0, true},
 	// 	{"Bad Permissions Zip Input Path", true, filepath.Join(tempDir, "bad-in-perm"), filepath.Join(tempDir, "bad-in-perm.zip"), 0, 0, true},
 	// 	{"Bad Permissions Zip Output Path", true, filepath.Join(tempDir, "bad-out-perm"), filepath.Join(tempDir, "bad-out-perm", "test.zip"), 1, 0, true},
 	// }
