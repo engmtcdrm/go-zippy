@@ -64,7 +64,7 @@ func CreateTempFilesInSubdirs(dir string, files int, subdirs int) ([]*os.File, e
 	tempFiles := make([]*os.File, 0, totalFiles)
 
 	for i := range subdirs {
-		subdirPath, err := os.MkdirTemp(dir, fmt.Sprintf("subfolder%d-*", i))
+		subdirPath, err := os.MkdirTemp(dir, fmt.Sprintf("subdir%d-*", i))
 		if err != nil {
 			return nil, err
 		}
