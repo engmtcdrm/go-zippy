@@ -20,12 +20,12 @@ func Test_Zippy_Add(t *testing.T) {
 		toCompressDir, err := os.MkdirTemp(tempDir, "to-compress-*")
 		assert.NoError(t, err)
 
-		baseFiles, err := testutils.CreateTempFiles(toCompressDir, files)
+		baseFiles, err := testutils.CreateRandomTempFiles(toCompressDir, files)
 		assert.NoError(t, err)
 		assert.Len(t, baseFiles, files)
 
 		if subdirs > 0 {
-			subdirFiles, err := testutils.CreateTempFilesInSubdirs(toCompressDir, files, subdirs)
+			subdirFiles, err := testutils.CreateRandomTempFilesInSubdirs(toCompressDir, files, subdirs)
 			assert.NoError(t, err)
 			_ = subdirFiles
 		}
@@ -205,12 +205,12 @@ func Test_Zippy_Delete(t *testing.T) {
 		toCompressDir, err := os.MkdirTemp(tempDir, "to-compress-*")
 		assert.NoError(t, err)
 
-		baseFiles, err := testutils.CreateTempFiles(toCompressDir, files)
+		baseFiles, err := testutils.CreateRandomTempFiles(toCompressDir, files)
 		assert.NoError(t, err)
 		assert.Len(t, baseFiles, files)
 
 		if subdirs > 0 {
-			subdirFiles, err := testutils.CreateTempFilesInSubdirs(toCompressDir, files, subdirs)
+			subdirFiles, err := testutils.CreateRandomTempFilesInSubdirs(toCompressDir, files, subdirs)
 			assert.NoError(t, err)
 			_ = subdirFiles
 		}

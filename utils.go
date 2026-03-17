@@ -23,6 +23,36 @@ func copyZipFiles(reader *zip.ReadCloser, writer *zip.Writer) (map[string]*zip.F
 	return existingFiles, nil
 }
 
+// createHeader creates a zip file header for a given file or directory path.
+// If junk is true, the header will only include the base name of the file or
+// directory, without any path information. If the path is a directory, a
+// trailing slash will be added to the header name. If the path is a file, the
+// compression method will be set to Deflate.
+func createHeader(path string, junk bool) (*zip.FileHeader, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return nil, err
+	}
+
+	header.Name = toZipPath(path)
+
+	if junk {
+		header.Name = filepath.Base(header.Name)
+	}
+
+	if header.FileInfo().IsDir() { // was info.IsDir()
+		header.Name += "/"
+	} else {
+		header.Method = zip.Deflate
+	}
+	return header, nil
+}
+
 // fileFound checks if a zip file matches any of the provided glob patterns.
 func fileFound(zipFile *zip.File, files ...string) (bool, error) {
 	for _, f := range files {

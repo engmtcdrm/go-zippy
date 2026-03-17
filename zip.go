@@ -157,7 +157,7 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 	files = toZipPaths(files...)
 
 	// Copy existing files to the new zip archive, excluding the ones to delete
-	if err := z.copyZipFilesKeep(z.zReadCloser.File, files); err != nil {
+	if err := z.copyZipFilesKeep(z.zReadCloser.File, files...); err != nil {
 		return "", err
 	}
 
@@ -169,7 +169,9 @@ func (z *Zippy) createTempZipWithFiles(dest string, files ...string) (tempZipPat
 // files are the files or directories to delete. Glob patterns are supported.
 //
 // returns the path to the temporary zip file as well as any errors
-func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, err error) {
+func (z *Zippy) createTempZipWithoutFiles(files ...string) (string, error) {
+	var err error
+
 	z.zReadCloser, err = zip.OpenReader(z.filePath)
 	if err != nil {
 		return "", err
@@ -189,7 +191,7 @@ func (z *Zippy) createTempZipWithoutFiles(files ...string) (tempZipPath string, 
 	files = toZipPaths(files...)
 
 	// Copy existing files to the new zip archive, excluding the ones to delete
-	if err := z.copyZipFilesRemove(z.zReadCloser.File, files); err != nil {
+	if err := z.copyZipFilesRemove(z.zReadCloser.File, files...); err != nil {
 		return "", err
 	}
 
@@ -238,7 +240,7 @@ func (z *Zippy) copyEntireZip(tempZipPath string) (string, error) {
 // files are the files to copy.
 //
 // patterns are the patterns to match files to keep.
-func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns []string) error {
+func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns ...string) error {
 	// Map to track directories that need to be included
 	dirsToInclude := make(map[string]bool)
 	filesToCopy := make(map[string]*zip.File)
@@ -303,7 +305,7 @@ func (z *Zippy) copyZipFilesKeep(files []*zip.File, patterns []string) error {
 // files are the files to copy.
 //
 // patterns are the patterns to match files to remove.
-func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns []string) error {
+func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns ...string) error {
 	// First identify which files should be removed
 	filesToRemove := make(map[string]bool)
 	for _, pattern := range patterns {
@@ -406,37 +408,70 @@ func (z *Zippy) copyZipFilesRemove(files []*zip.File, patterns []string) error {
 	return nil
 }
 
-// Adds a file or directory to a zip archive.
-//
-// path is the file or directory to add.
+// processFile processes a file or directory, adding it to the zip archive. If
+// the file is a directory, it will be walked and all files within it will be
+// added. Glob patterns are supported.
+func (z *Zippy) processFile(file string) error {
+	fileMatches, err := filepath.Glob(file)
+	if err != nil {
+		return fmt.Errorf("failed to glob pattern '%s': %v", file, err)
+	}
+
+	// If no matches found, treat file as a literal path
+	if len(fileMatches) == 0 {
+		fileMatches = append(fileMatches, file)
+	}
+
+	for _, fileMatch := range fileMatches {
+		fileMatch = filepath.Clean(fileMatch)
+
+		fInfo, err := os.Stat(fileMatch)
+		if err != nil {
+			return err
+		}
+
+		if fInfo.IsDir() {
+			err = z.zipDir(fileMatch)
+		} else {
+			err = z.zipFile(fileMatch)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (z *Zippy) zipDir(path string) error {
+	err := filepath.WalkDir(path, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+
+		return z.zipFile(path)
+	})
+
+	return err
+}
+
+// Adds a file or directory to the zip archive.
 func (z *Zippy) zipFile(path string) error {
 	path = filepath.Clean(path)
 
-	info, err := os.Stat(path)
+	header, err := createHeader(path, z.Junk)
 	if err != nil {
 		return err
-	}
-
-	header, err := zip.FileInfoHeader(info)
-	if err != nil {
-		return err
-	}
-
-	header.Name = toZipPath(path)
-
-	if z.Junk {
-		header.Name = filepath.Base(header.Name)
-	}
-
-	if header.FileInfo().IsDir() { // was info.IsDir()
-		header.Name += "/"
-	} else {
-		header.Method = zip.Deflate
 	}
 
 	// search z.existingFiles for matching header.Name
 	// if found, skip
 	if _, ok := z.existingFiles[header.Name]; ok {
+		return nil
+	}
+
+	if header.FileInfo().IsDir() {
 		return nil
 	}
 
@@ -452,10 +487,6 @@ func (z *Zippy) zipFile(path string) error {
 	}
 	defer file.Close()
 
-	if header.FileInfo().IsDir() {
-		return nil
-	}
-
 	written, err := io.Copy(writer, file)
 	if err != nil {
 		return err
@@ -466,44 +497,11 @@ func (z *Zippy) zipFile(path string) error {
 	return err
 }
 
-// Adds files or directories to a zip archive.
-//
-// files are the files or directories to add. Glob patterns are supported.
+// Adds files or directories to the zip archive. Glob patterns are supported.
 func (z *Zippy) zipFiles(files ...string) error {
 	for _, file := range files {
-		fileMatches, err := filepath.Glob(file)
-		if err != nil {
-			return fmt.Errorf("failed to glob pattern '%s': %v", file, err)
-		}
-
-		// If no matches found, treat file as a literal path
-		if len(fileMatches) == 0 {
-			fileMatches = append(fileMatches, file)
-		}
-
-		for _, fileMatch := range fileMatches {
-			fileMatch = filepath.Clean(fileMatch)
-
-			fInfo, err := os.Stat(fileMatch)
-			if err != nil {
-				return err
-			}
-
-			if fInfo.IsDir() {
-				err = filepath.WalkDir(fileMatch, func(path string, entry os.DirEntry, walkErr error) error {
-					if walkErr != nil {
-						return walkErr
-					}
-
-					return z.zipFile(path)
-				})
-			} else {
-				err = z.zipFile(fileMatch)
-			}
-
-			if err != nil {
-				return err
-			}
+		if err := z.processFile(file); err != nil {
+			return err
 		}
 	}
 
