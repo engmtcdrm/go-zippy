@@ -5,6 +5,10 @@ applyTo: '**/*.go'
 ---
 Go Version: 1.25.6
 
+# Standards
+
+## Coding Standards
+
 1. Use camelCase for variable and function names, and PascalCase for exported names.
 2. Keep comments in code under 80 characters for better readability.
 3. Use tabs for indentation, not spaces.
@@ -13,7 +17,7 @@ Go Version: 1.25.6
 6. Order files as follows: package declaration, imports, constants, variables, types, exported functions, unexported functions.
 7. Order functions alphabetically within their respective sections (exported vs unexported).
 
-## Testing Conventions
+## Testing Standards
 
 1. Tests should be placed in a separate file with the suffix `_test.go`.
 2. Tests should be organized using `t.Run` to group related test cases together.
