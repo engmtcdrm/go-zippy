@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"archive/zip"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +36,7 @@ func TestCreateTempFile(t *testing.T) {
 }
 
 // Tests for [CreateTempFiles] function.
-func TestCreateTestFiles(t *testing.T) {
+func Test_CreateTestFiles(t *testing.T) {
 	t.Run("create 3 temp files", func(t *testing.T) {
 		tempDir := t.TempDir()
 
@@ -43,6 +44,11 @@ func TestCreateTestFiles(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, testFiles)
 		assert.Len(t, testFiles, 3)
+
+		for i, file := range testFiles {
+			expectedName := fmt.Sprintf("test%d.txt", i)
+			assert.Equal(t, expectedName, filepath.Base(file.Name()))
+		}
 	})
 
 	t.Run("create -1 temp files", func(t *testing.T) {
@@ -60,12 +66,38 @@ func TestCreateTestFiles(t *testing.T) {
 	})
 }
 
-// Tests for [CreateZipFile] function.
+// Tests for [CreateRandomTempFiles] function.
+func Test_CreateRandomTestFiles(t *testing.T) {
+	t.Run("create 3 temp files", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		testFiles, err := CreateRandomTempFiles(tempDir, 3)
+		assert.NoError(t, err)
+		assert.NotNil(t, testFiles)
+		assert.Len(t, testFiles, 3)
+	})
+
+	t.Run("create -1 temp files", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		testFiles, err := CreateRandomTempFiles(tempDir, -1)
+		assert.Error(t, err)
+		assert.Nil(t, testFiles)
+	})
+
+	t.Run("error from CreateTempFile", func(t *testing.T) {
+		testFiles, err := CreateRandomTempFiles(os.DevNull, 1)
+		assert.Error(t, err)
+		assert.Nil(t, testFiles)
+	})
+}
+
+// Tests for [CreateZipFileWithRandomFiles] function.
 func TestCreateZipFile(t *testing.T) {
 	tempDir := t.TempDir()
 	zipFilePath := filepath.Join(tempDir, "test.zip")
 
-	expectedCount, err := CreateZipFile(zipFilePath, 3, 2)
+	expectedCount, err := CreateZipFileWithRandomFiles(zipFilePath, 3, 2)
 	assert.NoError(t, err)
 
 	// Check if the zip file was created

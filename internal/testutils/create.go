@@ -7,13 +7,25 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // CreateTempFile creates a temporary file using [os.CreateTemp] in the given
-// directory with the specified name pattern and writes the base name of the
-// temporary file to its contents.
+// directory with the specified name pattern if it contains a wildcard "*". If
+// the name pattern does not contain a wildcard, a temporary file is created
+// using [os.OpenFile] with the exact name. The function writes the base name of
+// the temporary file to its contents and returns the created temporary file.
 func CreateTempFile(dir, name string) (*os.File, error) {
-	tempFile, err := os.CreateTemp(dir, name)
+	var tempFile *os.File
+	var err error
+
+	if strings.Contains(name, "*") {
+		tempFile, err = os.CreateTemp(dir, name)
+	} else {
+		tempFilePath := filepath.Join(dir, name)
+		tempFile, err = os.OpenFile(tempFilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -37,29 +49,23 @@ func CreateTempFilename(pattern string) string {
 }
 
 // CreateTempFiles creates the specified number of temporary files in the given
-// directory.
+// directory with non-randomized names (e.g., test0.txt, test1.txt, etc.).
 func CreateTempFiles(dir string, files int) ([]*os.File, error) {
-	if files < 0 {
-		return nil, fmt.Errorf("invalid number of files: %d", files)
-	}
-
-	tempFiles := make([]*os.File, 0, files)
-
-	for i := range files {
-		file, err := CreateTempFile(dir, fmt.Sprintf("test%d-*.txt", i))
-		if err != nil {
-			return nil, err
-		}
-
-		tempFiles = append(tempFiles, file)
-	}
-
-	return tempFiles, nil
+	return createTempFiles(dir, files, "test%d.txt")
 }
 
-// CreateTempFilesInSubdirs creates the specified number of temporary files in
-// the given directory and in the specified number of subdirectories.
-func CreateTempFilesInSubdirs(dir string, files int, subdirs int) ([]*os.File, error) {
+// CreateRandomTempFiles creates the specified number of temporary files in the given
+// directory with randomized names (e.g., test0-1234567890.txt,
+// test1-1829304829.txt, etc.).
+func CreateRandomTempFiles(dir string, files int) ([]*os.File, error) {
+	return createTempFiles(dir, files, "test%d-*.txt")
+}
+
+// CreateRandomTempFilesInSubdirs creates the specified number of temporary
+// files in the given directory and in the specified number of subdirectories.
+// File names are randomized (e.g., test0-1234567890.txt, test1-1829304829.txt,
+// etc.).
+func CreateRandomTempFilesInSubdirs(dir string, files int, subdirs int) ([]*os.File, error) {
 	totalFiles := files + (files * subdirs)
 	tempFiles := make([]*os.File, 0, totalFiles)
 
@@ -71,7 +77,7 @@ func CreateTempFilesInSubdirs(dir string, files int, subdirs int) ([]*os.File, e
 
 		slog.Debug(fmt.Sprintf("Created subdirectory %s", subdirPath))
 
-		subTempFiles, err := CreateTempFiles(subdirPath, files)
+		subTempFiles, err := CreateRandomTempFiles(subdirPath, files)
 		if err != nil {
 			return nil, err
 		}
@@ -82,9 +88,9 @@ func CreateTempFilesInSubdirs(dir string, files int, subdirs int) ([]*os.File, e
 	return tempFiles, nil
 }
 
-// CreateZipFile creates a zip file with the specified number of files and
+// CreateZipFileWithRandomFiles creates a zip file with the specified number of files and
 // subdirectories.
-func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
+func CreateZipFileWithRandomFiles(zipFilePath string, files int, subdirs int) (int, error) {
 	// Step 1: Create a temporary directory to hold the files
 	tempDir, err := os.MkdirTemp("", "zip-temp-")
 	if err != nil {
@@ -97,11 +103,11 @@ func CreateZipFile(zipFilePath string, files int, subdirs int) (int, error) {
 	slog.Debug(fmt.Sprintf("Creating %d files/subdirectories in %s\n", expectedFiles+subdirs, tempDir))
 
 	// Step 2: Create files and subdirectories in the temporary directory
-	if _, err := CreateTempFiles(tempDir, files); err != nil {
+	if _, err := CreateRandomTempFiles(tempDir, files); err != nil {
 		return 0, err
 	}
 
-	if _, err := CreateTempFilesInSubdirs(tempDir, files, subdirs); err != nil {
+	if _, err := CreateRandomTempFilesInSubdirs(tempDir, files, subdirs); err != nil {
 		return 0, err
 	}
 
@@ -165,4 +171,27 @@ func addFilesToZip(tempDir string, zWrite *zip.Writer) filepath.WalkFunc {
 		_, err = io.Copy(zipFile, srcFile)
 		return err
 	}
+}
+
+// createTempFiles is a helper function that creates the specified number of
+// temporary files in the given directory with names based on the provided
+// format string. If the format string contains a wildcard "*", it will be
+// replaced with random digits.
+func createTempFiles(dir string, files int, format string) ([]*os.File, error) {
+	if files < 0 {
+		return nil, fmt.Errorf("invalid number of files: %d", files)
+	}
+
+	tempFiles := make([]*os.File, 0, files)
+
+	for i := range files {
+		file, err := CreateTempFile(dir, fmt.Sprintf(format, i))
+		if err != nil {
+			return nil, err
+		}
+
+		tempFiles = append(tempFiles, file)
+	}
+
+	return tempFiles, nil
 }
