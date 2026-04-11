@@ -19,7 +19,7 @@ func CreateTempFile(dir, name string) (*os.File, error) {
 	var tempFile *os.File
 	var err error
 
-	if strings.Contains(name, "*") {
+	if name == "" || strings.Contains(name, "*") {
 		tempFile, err = os.CreateTemp(dir, name)
 	} else {
 		tempFilePath := filepath.Join(dir, name)
