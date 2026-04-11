@@ -1,8 +1,8 @@
 module github.com/engmtcdrm/go-zippy
 
-go 1.25.6
+go 1.25.8
 
-require golang.org/x/sys v0.41.0
+require golang.org/x/sys v0.43.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
