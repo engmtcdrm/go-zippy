@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/engmtcdrm/go-zippy/internal/testutils"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests for [Zippy.Add] function.
@@ -18,15 +18,15 @@ func Test_Zippy_Add(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, zipFileName)
 
 		toCompressDir, err := os.MkdirTemp(tempDir, "to-compress-*")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		baseFiles, err := testutils.CreateRandomTempFiles(toCompressDir, files)
-		assert.NoError(t, err)
-		assert.Len(t, baseFiles, files)
+		require.NoError(t, err)
+		require.Len(t, baseFiles, files)
 
 		if subdirs > 0 {
 			subdirFiles, err := testutils.CreateRandomTempFilesInSubdirs(toCompressDir, files, subdirs)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_ = subdirFiles
 		}
 
@@ -42,11 +42,11 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add(toCompressDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount)
 	})
 
 	t.Run("zip 1 file", func(t *testing.T) {
@@ -58,11 +58,11 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add(toCompressDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount)
 	})
 
 	t.Run("zip 10 files", func(t *testing.T) {
@@ -74,11 +74,11 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add(toCompressDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount)
 	})
 
 	t.Run("zip 0 files and 1 subdirectory", func(t *testing.T) {
@@ -90,11 +90,11 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add(toCompressDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount)
 	})
 
 	t.Run("zip 10 files and 2 subdirectories", func(t *testing.T) {
@@ -106,11 +106,11 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add(toCompressDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount)
 	})
 
 	t.Run("non-existent zip input path", func(t *testing.T) {
@@ -121,7 +121,7 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add("does-not-exist")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("non-existent zip input path", func(t *testing.T) {
@@ -132,7 +132,7 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := z.Add("does-not-exist")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("invalid zip input path", func(t *testing.T) {
@@ -150,7 +150,7 @@ func Test_Zippy_Add(t *testing.T) {
 			err = z.Add("/invalid/path/NUL")
 		}
 
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("bad permissions zip input path", func(t *testing.T) {
@@ -161,7 +161,7 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := testutils.PermissionTest(toCompressDir, z.Add, toCompressDir)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("bad permissions zip output path", func(t *testing.T) {
@@ -172,7 +172,7 @@ func Test_Zippy_Add(t *testing.T) {
 		z := NewZippy(zipFilePath)
 
 		err := testutils.PermissionTest(filepath.Dir(zipFilePath), z.Add, toCompressDir)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -203,22 +203,22 @@ func Test_Zippy_Delete(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, zipFileName)
 
 		toCompressDir, err := os.MkdirTemp(tempDir, "to-compress-*")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		baseFiles, err := testutils.CreateRandomTempFiles(toCompressDir, files)
-		assert.NoError(t, err)
-		assert.Len(t, baseFiles, files)
+		require.NoError(t, err)
+		require.Len(t, baseFiles, files)
 
 		if subdirs > 0 {
 			subdirFiles, err := testutils.CreateRandomTempFilesInSubdirs(toCompressDir, files, subdirs)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_ = subdirFiles
 		}
 
 		z := NewZippy(zipFilePath)
 
 		err = z.Add(toCompressDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return tempDir, zipFilePath, toCompressDir
 	}
@@ -230,15 +230,15 @@ func Test_Zippy_Delete(t *testing.T) {
 		_, zipFilePath, _ := createZipWithFiles(t, files, subdirs)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		z := NewZippy(zipFilePath)
 		err = z.Delete(zippedFiles[0].Name)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err = Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount-1)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount-1)
 	})
 
 	t.Run("delete 10 files", func(t *testing.T) {
@@ -248,18 +248,18 @@ func Test_Zippy_Delete(t *testing.T) {
 		_, zipFilePath, _ := createZipWithFiles(t, files, subdirs)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		z := NewZippy(zipFilePath)
 		// 0 index is the base directory
 		toDelete := filepath.Join(zippedFiles[0].Name, "test*.txt")
 
 		err = z.Delete(toDelete)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err = Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount-10)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount-10)
 	})
 
 	t.Run("delete 1 subdirectory", func(t *testing.T) {
@@ -269,18 +269,18 @@ func Test_Zippy_Delete(t *testing.T) {
 		_, zipFilePath, _ := createZipWithFiles(t, files, subdirs)
 
 		zippedFiles, err := Contents(zipFilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// 0 index is the base directory
 		toDelete := filepath.Join(zippedFiles[0].Name, "subdir0*/*")
 
 		z := NewZippy(zipFilePath)
 		err = z.Delete(toDelete)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zippedFiles, err = Contents(zipFilePath)
-		assert.NoError(t, err)
-		assert.Len(t, zippedFiles, expectedFilesCount-2)
+		require.NoError(t, err)
+		require.Len(t, zippedFiles, expectedFilesCount-2)
 	})
 
 	// 	tests := []struct {

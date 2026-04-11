@@ -4,46 +4,46 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests for [PermissionTest] function.
-func TestPermissionTest(t *testing.T) {
+func Test_PermissionTest(t *testing.T) {
 	t.Run("0-arg function", func(t *testing.T) {
 		tempDir := t.TempDir()
 		tempFile, err := CreateTempFile(tempDir, "test-*.txt")
-		assert.NoError(t, err)
-		assert.NotNil(t, tempFile)
+		require.NoError(t, err)
+		require.NotNil(t, tempFile)
 
 		err = PermissionTest(tempFile.Name(), func() error { return nil })
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("1-arg function", func(t *testing.T) {
 		tempDir := t.TempDir()
 		tempFile, err := CreateTempFile(tempDir, "test-*.txt")
-		assert.NoError(t, err)
-		assert.NotNil(t, tempFile)
+		require.NoError(t, err)
+		require.NotNil(t, tempFile)
 
 		err = PermissionTest(tempFile.Name(), func(arg1 string) error { return nil }, tempFile.Name())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("2-arg function", func(t *testing.T) {
 		tempDir := t.TempDir()
 		tempFile, err := CreateTempFile(tempDir, "test-*.txt")
-		assert.NoError(t, err)
-		assert.NotNil(t, tempFile)
+		require.NoError(t, err)
+		require.NotNil(t, tempFile)
 
 		err = PermissionTest(tempFile.Name(), func(arg1, arg2 string) error { return nil }, tempFile.Name(), "arg2")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("variadic function", func(t *testing.T) {
 		tempDir := t.TempDir()
 		tempFile, err := CreateTempFile(tempDir, "test-*.txt")
-		assert.NoError(t, err)
-		assert.NotNil(t, tempFile)
+		require.NoError(t, err)
+		require.NotNil(t, tempFile)
 
 		err = PermissionTest(tempFile.Name(), func(args ...string) error {
 			if len(args) != 2 {
@@ -51,18 +51,18 @@ func TestPermissionTest(t *testing.T) {
 			}
 			return nil
 		}, tempFile.Name(), "arg2")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("function with error", func(t *testing.T) {
 		tempDir := t.TempDir()
 		tempFile, err := CreateTempFile(tempDir, "test-*.txt")
-		assert.NoError(t, err)
-		assert.NotNil(t, tempFile)
+		require.NoError(t, err)
+		require.NotNil(t, tempFile)
 
 		err = PermissionTest(tempFile.Name(), func(args ...string) error {
 			return errors.New("test error")
 		}, tempFile.Name(), "arg2")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
