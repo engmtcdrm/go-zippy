@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests for [Contents] function.
-func TestContents(t *testing.T) {
+func Test_Contents(t *testing.T) {
 	t.Run("Zip file exists", func(t *testing.T) {
 		tempDir := t.TempDir()
 		testZipFile := filepath.Join(tempDir, "test.zip")
@@ -30,14 +30,14 @@ func TestContents(t *testing.T) {
 		zipFile.Close()
 
 		zipFiles, err := Contents(testZipFile)
-		assert.Nil(t, err)
-		assert.NotNil(t, zipFiles)
-		assert.Len(t, zipFiles, 1)
+		require.Nil(t, err)
+		require.NotNil(t, zipFiles)
+		require.Len(t, zipFiles, 1)
 	})
 
 	t.Run("Zip file does not exist", func(t *testing.T) {
 		zipFiles, err := Contents("nonexistent.zip")
-		assert.NotNil(t, err)
-		assert.Nil(t, zipFiles)
+		require.NotNil(t, err)
+		require.Nil(t, zipFiles)
 	})
 }

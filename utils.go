@@ -8,6 +8,51 @@ import (
 	"strings"
 )
 
+// copyZipFiles copies all files from the reader zip to the writer zip and
+// returns a map of the existing files.
+func copyZipFiles(reader *zip.ReadCloser, writer *zip.Writer) (map[string]*zip.File, error) {
+	existingFiles := make(map[string]*zip.File, len(reader.File))
+	for _, f := range reader.File {
+		existingFiles[f.Name] = f
+
+		if err := writer.Copy(f); err != nil {
+			return nil, err
+		}
+	}
+
+	return existingFiles, nil
+}
+
+// createHeader creates a zip file header for a given file or directory path.
+// If junk is true, the header will only include the base name of the file or
+// directory, without any path information. If the path is a directory, a
+// trailing slash will be added to the header name. If the path is a file, the
+// compression method will be set to Deflate.
+func createHeader(path string, junk bool) (*zip.FileHeader, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return nil, err
+	}
+
+	header.Name = toZipPath(path)
+
+	if junk {
+		header.Name = filepath.Base(header.Name)
+	}
+
+	if header.FileInfo().IsDir() { // was info.IsDir()
+		header.Name += "/"
+	} else {
+		header.Method = zip.Deflate
+	}
+	return header, nil
+}
+
 // fileFound checks if a zip file matches any of the provided glob patterns.
 func fileFound(zipFile *zip.File, files ...string) (bool, error) {
 	for _, f := range files {
@@ -50,6 +95,36 @@ func filterFiles(zipFiles []*zip.File, files ...string) ([]*zip.File, error) {
 	}
 
 	return extFiles, nil
+}
+
+// openZipFile opens a zip file for reading and writing. If the file does not
+// exist, it is created. If the file exists, it is opened for reading and
+// and writing.
+func openZipFile(path string) (*os.File, *zip.ReadCloser, error) {
+	var zipFile *os.File
+	var zipReadCloser *zip.ReadCloser
+
+	_, err := os.Stat(path)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, nil, err
+	} else if os.IsNotExist(err) {
+		zipFile, err = os.Create(path)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		zipFile, err = os.OpenFile(path, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		zipReadCloser, err = zip.OpenReader(path)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, nil, err
+		}
+	}
+
+	return zipFile, zipReadCloser, nil
 }
 
 // Removes the drive letter and colon from a Windows path.

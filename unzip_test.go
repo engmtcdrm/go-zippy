@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/engmtcdrm/go-zippy/internal/testutils"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testZipFileName = "test.zip"
@@ -17,25 +17,25 @@ const testZipFileName = "test.zip"
 func Test_NewUnzippy(t *testing.T) {
 	t.Run("without options", func(t *testing.T) {
 		u, err := NewUnzippy(testZipFileName, nil)
-		assert.NoError(t, err)
-		assert.Equal(t, testZipFileName, u.Path, fmt.Sprintf("Expected Path to be '%s'", testZipFileName))
-		assert.NotNil(t, u.Options)
-		assert.False(t, u.Options.Junk)
-		assert.False(t, u.Options.Overwrite)
+		require.NoError(t, err)
+		require.Equal(t, testZipFileName, u.Path, fmt.Sprintf("Expected Path to be '%s'", testZipFileName))
+		require.NotNil(t, u.Options)
+		require.False(t, u.Options.Junk)
+		require.False(t, u.Options.Overwrite)
 	})
 
 	t.Run("with options", func(t *testing.T) {
 		options := &UnzippyOptions{Junk: true, Overwrite: true}
 		u, err := NewUnzippy(testZipFileName, options)
-		assert.NoError(t, err)
-		assert.Equal(t, testZipFileName, u.Path)
-		assert.Equal(t, options, u.Options)
+		require.NoError(t, err)
+		require.Equal(t, testZipFileName, u.Path)
+		require.Equal(t, options, u.Options)
 	})
 
 	t.Run("empty path", func(t *testing.T) {
 		u, err := NewUnzippy("", nil)
-		assert.Error(t, err)
-		assert.Nil(t, u)
+		require.Error(t, err)
+		require.Nil(t, u)
 	})
 
 }
@@ -46,15 +46,15 @@ func Test_Unzippy_Extract_ExtractFiles(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 10, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		_, err = u.Extract()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -64,30 +64,30 @@ func Test_Unzippy_ExtractFilesTo(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 10, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		_, err = u.ExtractFilesTo(tempDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("invalid glob pattern", func(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 10, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		_, err = u.ExtractFilesTo(tempDir, "[")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -98,16 +98,16 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		_, err := testutils.CreateZipFile(zipFilePath, 10, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 10, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.NoError(t, err)
-		assert.Len(t, files, 10)
+		require.NoError(t, err)
+		require.Len(t, files, 10)
 	})
 
 	t.Run("empty zip exists", func(t *testing.T) {
@@ -115,16 +115,16 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		_, err := testutils.CreateZipFile(zipFilePath, 0, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 0, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.NoError(t, err)
-		assert.Len(t, files, 0)
+		require.NoError(t, err)
+		require.Len(t, files, 0)
 	})
 
 	t.Run("zip exists with subfolders", func(t *testing.T) {
@@ -132,16 +132,16 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		_, err := testutils.CreateZipFile(zipFilePath, 10, 2)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 10, 2)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.NoError(t, err)
-		assert.Len(t, files, 32)
+		require.NoError(t, err)
+		require.Len(t, files, 32)
 	})
 
 	t.Run("zip exists without files in subfolders", func(t *testing.T) {
@@ -149,16 +149,16 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 		dest := filepath.Join(tempDir, "output")
 
-		_, err := testutils.CreateZipFile(zipFilePath, 0, 2)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 0, 2)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.NoError(t, err)
-		assert.Len(t, files, 2)
+		require.NoError(t, err)
+		require.Len(t, files, 2)
 	})
 
 	t.Run("zip does not exist", func(t *testing.T) {
@@ -167,12 +167,12 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		dest := filepath.Join(tempDir, "output")
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.Error(t, err)
-		assert.Nil(t, files)
+		require.Error(t, err)
+		require.Nil(t, files)
 	})
 
 	t.Run("not a zip file", func(t *testing.T) {
@@ -181,15 +181,15 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		dest := filepath.Join(tempDir, "output")
 
 		err := os.WriteFile(zipFilePath, []byte("this is not a zip file"), 0644)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.Error(t, err)
-		assert.Nil(t, files)
+		require.Error(t, err)
+		require.Nil(t, files)
 	})
 
 	t.Run("bad zip file path", func(t *testing.T) {
@@ -198,12 +198,12 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		dest := filepath.Join(tempDir, "output")
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		files, err := u.ExtractTo(dest)
-		assert.Error(t, err)
-		assert.Nil(t, files)
+		require.Error(t, err)
+		require.Nil(t, files)
 	})
 
 	t.Run("bad permissions unzip input path", func(t *testing.T) {
@@ -211,15 +211,15 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, "bad-in-perm.zip")
 		dest := filepath.Join(tempDir, "bad-in-perm")
 
-		_, err := testutils.CreateZipFile(zipFilePath, 0, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 0, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		err = testutils.PermissionTest(zipFilePath, u.ExtractTo, dest)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("bad permissions unzip output path", func(t *testing.T) {
@@ -227,16 +227,16 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 		zipFilePath := filepath.Join(tempDir, "bad-out-perm.zip")
 		dest := filepath.Join(tempDir, "bad-out-perm")
 
-		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		destDir := filepath.Dir(dest)
 		err = testutils.PermissionTest(destDir, u.ExtractTo, dest)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -245,16 +245,16 @@ func Test_Unzippy_ExtractTo(t *testing.T) {
 // Tests for [Unzippy.copyAndValidate] function.
 func Test_Unzippy_copyAndValidate(t *testing.T) {
 	initUnzippy := func(t *testing.T, zipFilePath string) (*Unzippy, *zip.ReadCloser) {
-		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 
 		return u, zipReader
 	}
@@ -269,18 +269,18 @@ func Test_Unzippy_copyAndValidate(t *testing.T) {
 		for _, file := range zipReader.File {
 			destFilePath := filepath.Join(tempDir, "output", file.Name)
 			err := os.MkdirAll(filepath.Dir(destFilePath), os.ModePerm)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			destFile, err := os.Create(destFilePath)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer destFile.Close()
 
 			zippedFileReader, err := file.Open()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer zippedFileReader.Close()
 
 			err = u.copyAndValidate(zippedFileReader, file, filepath.Dir(destFilePath), destFile)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	})
 
@@ -294,21 +294,21 @@ func Test_Unzippy_copyAndValidate(t *testing.T) {
 		for _, file := range zipReader.File {
 			destFilePath := filepath.Join(tempDir, "output", file.Name)
 			err := os.MkdirAll(filepath.Dir(destFilePath), os.ModePerm)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			destFile, err := os.Create(destFilePath)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer destFile.Close()
 
 			zippedFileReader, err := file.Open()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer zippedFileReader.Close()
 
 			// Invalidate the zip file
 			file.UncompressedSize64 = uint64(12345)
 
 			err = u.copyAndValidate(zippedFileReader, file, filepath.Dir(destFilePath), destFile)
-			assert.Error(t, err)
+			require.Error(t, err)
 		}
 	})
 
@@ -322,14 +322,14 @@ func Test_Unzippy_copyAndValidate(t *testing.T) {
 		for _, file := range zipReader.File {
 			destFilePath := filepath.Join(tempDir, "output", file.Name)
 			err := os.MkdirAll(filepath.Dir(destFilePath), os.ModePerm)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			destFile, err := os.Create(destFilePath)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer destFile.Close()
 
 			zippedFileReader, err := file.Open()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer zippedFileReader.Close()
 
 			// Wrap the zippedFileReader with a custom reader that modifies the
@@ -338,8 +338,8 @@ func Test_Unzippy_copyAndValidate(t *testing.T) {
 			corruptedReader := testutils.NewMockReader(zippedFileReader)
 
 			err = u.copyAndValidate(corruptedReader, file, filepath.Dir(destFilePath), destFile)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "checksum") // Ensure the error is due to checksum mismatch
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "checksum") // Ensure the error is due to checksum mismatch
 		}
 	})
 }
@@ -350,20 +350,20 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 		defer zipReader.Close()
 
 		for _, file := range zipReader.File {
 			err := u.unzipFile(file, filepath.Join(tempDir, "test_output", file.Name))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	})
 
@@ -371,22 +371,22 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 		defer zipReader.Close()
 
 		for _, file := range zipReader.File {
 			// Set an invalid compression method to trigger an error
 			file.Method = 54321
 			err := u.unzipFile(file, filepath.Join(tempDir, "test_output", file.Name))
-			assert.Error(t, err)
+			require.Error(t, err)
 		}
 	})
 
@@ -396,24 +396,24 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		zipFileDirPath := filepath.Join(tempDir, "badperm")
 
 		err := os.MkdirAll(zipFileDirPath, os.ModePerm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		_, err = testutils.CreateZipFile(zipFilePath, 1, 1)
-		assert.NoError(t, err)
+		_, err = testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 1)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 		defer zipReader.Close()
 
 		for _, file := range zipReader.File {
 			fileDest := filepath.Join(zipFileDirPath, "badsubperm", file.Name)
 			err = testutils.PermissionTest(zipFileDirPath, u.unzipFile, file, fileDest)
-			assert.Error(t, err)
+			require.Error(t, err)
 		}
 	})
 
@@ -423,24 +423,24 @@ func Test_Unzippy_unzipFile(t *testing.T) {
 		zipFileDirPath := filepath.Join(tempDir, "badperm")
 
 		err := os.MkdirAll(zipFileDirPath, os.ModePerm)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		_, err = testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err = testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 		defer zipReader.Close()
 
 		for _, file := range zipReader.File {
 			fileDest := filepath.Join(zipFileDirPath, file.Name)
 			err = testutils.PermissionTest(zipFileDirPath, u.unzipFile, file, fileDest)
-			assert.Error(t, err)
+			require.Error(t, err)
 		}
 	})
 }
@@ -451,39 +451,39 @@ func Test_Unzippy_unzipFiles(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 		defer zipReader.Close()
 
 		err = u.unzipFiles(tempDir, zipReader.File...)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("valid unzip files junked", func(t *testing.T) {
 		tempDir := t.TempDir()
 		zipFilePath := filepath.Join(tempDir, testZipFileName)
 
-		_, err := testutils.CreateZipFile(zipFilePath, 1, 0)
-		assert.NoError(t, err)
+		_, err := testutils.CreateZipFileWithRandomFiles(zipFilePath, 1, 0)
+		require.NoError(t, err)
 
 		u, err := NewUnzippy(zipFilePath, &UnzippyOptions{Junk: true})
-		assert.NoError(t, err)
-		assert.NotNil(t, u)
+		require.NoError(t, err)
+		require.NotNil(t, u)
 
 		zipReader, err := zip.OpenReader(zipFilePath)
-		assert.NoError(t, err)
-		assert.NotNil(t, zipReader)
+		require.NoError(t, err)
+		require.NotNil(t, zipReader)
 		defer zipReader.Close()
 
 		err = u.unzipFiles(tempDir, zipReader.File...)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

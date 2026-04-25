@@ -1,0 +1,1 @@
+This repository is a Go package for simplifying the archiving and unarchiving of zip files. It provides a simple API for creating zip files from directories and extracting zip files to directories. The package is designed to be easy to use and efficient, making it a great choice for developers who need to work with zip files in their Go projects.

@@ -7,6 +7,9 @@
     // "build": {
     //     "dockerfile": "Dockerfile"
     // },
+    "containerEnv": {
+        "GOTOOLCHAIN": "auto"
+    },
 	"customizations": {
         "vscode": {
             "extensions": [
